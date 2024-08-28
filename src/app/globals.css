@@ -4,7 +4,7 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
+  --background-start-rgb: 240, 240, 240;
   --background-end-rgb: 255, 255, 255;
 }
 
@@ -18,16 +18,97 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  color: #333;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+.bg-custom {
+  background-image: url('/instelca2.jpeg'); /* Cambia la ruta según tu imagen */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Estilos globales */
+h1, h2 {
+  color: #333;
+  text-align: center;
+}
+
+button {
+  background-color: #007bff; /* Color azul brillante */
+  color: #141111;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+button:hover {
+  background-color: #0056b3; /* Azul oscuro para hover */
+}
+
+.react-calendar {
+  border: 1px solid #ddd; /* Borde gris claro */
+  border-radius: 8px; /* Bordes redondeados */
+  background: #131010; /* Fondo gris claro */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Sombra más profunda */
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.react-calendar__tile {
+  border-radius: 4px; /* Bordes redondeados para los tiles */
+  color: #333; /* Color negro para los números de los días */
+}
+
+.react-calendar__tile--active {
+  background: #007bff; /* Azul brillante para el día activo */
+  color: #3b2b2b;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* Sombra adicional para los días activos */
+}
+
+.react-calendar__tile--now {
+  border: 2px solid #007bff; /* Borde azul brillante para el día actual */
+}
+
+.react-calendar__tile--hasActive {
+  background: #2b2e30; /* Azul claro para los días con actividad */
+}
+
+
+
+/* Estilos para los select */
+select {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #0f0f0f;
+  font-size: 16px;
+  margin-top: 10px;
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 10px auto;
+}
+
+option {
+  padding: 10px;
+}
+
+/* Estilos para la lista de guardias */
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  padding: 10px;
+  background: #fff; /* Fondo blanco para los elementos de lista */
+  border: 1px solid #ddd; /* Borde gris claro */
+  margin: 5px 0;
+  border-radius: 5px;
 }
