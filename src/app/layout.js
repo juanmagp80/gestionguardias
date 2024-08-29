@@ -1,7 +1,16 @@
+import { Dosis } from '@next/font/google';
 import { Inter } from "next/font/google";
+import Navbar from "./components/Navbar/Navbar";
 import "./globals.css";
 
+const dosis = Dosis({
+  weight: ['400', '500', '600', '700'], // Puedes elegir los pesos que necesitas
+  subsets: ['latin'],  // Elige los conjuntos de caracteres que necesitas
+  variable: '--font-dosis',  // Nombre de la variable CSS
+});
+
 const inter = Inter({ subsets: ["latin"] });
+
 
 export const metadata = {
   title: "Create Next App",
@@ -10,8 +19,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="bg-custom min-h-screen">
+    <html lang="en" className={dosis.variable}>
+      <body className="bg-custom min-h-screen font-dosis">
+        <Navbar />
         <main>{children}</main>
       </body>
     </html>

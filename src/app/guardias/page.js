@@ -52,11 +52,15 @@ export default function Guardias() {
             setTecnicos(data);
         }
     };
-
     const fetchGuardias = async () => {
         const { inicio, fin } = semanaSeleccionada;
+        const fechaActual = new Date();
+        const primerDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1).toISOString().split("T")[0];
+        const ultimoDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).toISOString().split("T")[0];
+
         try {
-            const { data, error } = await supabase
+            // Recuperar todas las guardias para el periodo seleccionado
+            const { data: guardiasData, error: guardiasError } = await supabase
                 .from('guardias')
                 .select(`
                     fecha_guardia,
@@ -68,29 +72,46 @@ export default function Guardias() {
                 .lte('fecha_guardia', fin)
                 .order('fecha_guardia', { ascending: true });
 
-            if (error) {
-                throw error;
+            if (guardiasError) {
+                throw guardiasError;
             }
 
-            console.log("Datos recuperados:", data); // Verificar datos recuperados
+            // Recuperar todas las guardias del mes actual para contar
+            const { data: guardiasMesData, error: guardiasMesError } = await supabase
+                .from('guardias')
+                .select('tecnico_id')
+                .gte('fecha_guardia', primerDiaMes)
+                .lte('fecha_guardia', ultimoDiaMes);
 
-            const processedData = data.map(guardia => {
+            if (guardiasMesError) {
+                throw guardiasMesError;
+            }
+
+            // Contar la cantidad de guardias por técnico en el mes actual
+            const conteoMesActual = guardiasMesData.reduce((acc, { tecnico_id }) => {
+                acc[tecnico_id] = (acc[tecnico_id] || 0) + 1;
+                return acc;
+            }, {});
+
+            // Procesar los datos
+            const processedData = guardiasData.map(guardia => {
                 const tecnico = guardia.tecnicos || {};
                 const provincia = guardia.provincias || {};
                 return {
                     fecha_guardia: guardia.fecha_guardia,
                     tecnico_nombre: tecnico.nombre ? tecnico.nombre.trim() : "N/A",
-                    provincia_nombre: provincia.nombre ? provincia.nombre.trim() : "N/A"
+                    provincia_nombre: provincia.nombre ? provincia.nombre.trim() : "N/A",
+                    countMesActual: conteoMesActual[guardia.tecnico_id] || 0 // Guardias del mes actual
                 };
             });
-
-            console.log("Datos procesados:", processedData); // Verificar datos procesados
 
             setGuardias(processedData);
         } catch (error) {
             console.error("Error al recuperar guardias:", error.message);
         }
     };
+
+
 
     useEffect(() => {
         if (guardias.length > 0) {
@@ -245,43 +266,45 @@ export default function Guardias() {
             <div className="text-center">
                 <button
                     onClick={handleAsignarGuardias}
-                    className="bg-blue-500 text-white   text-white px-6 py-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="bg-red-500 text-white   text-white px-6 py-3 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                     Asignar Guardias
                 </button>
             </div>
-
-            <h2 className="text-xl font-semibold text-center text-white mt-8 mb-4">Guardias Asignadas</h2>
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
-                    <thead>
-                        <tr>
-                            <th className="px-4 py-2 border-b">Fecha</th>
-                            <th className="px-4 py-2 border-b">Técnico</th>
-                            <th className="px-4 py-2 border-b">Provincia</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {guardias.map((guardia, index) => (
-                            <tr key={index}>
-                                <td className="px-4 py-2 border-b">{guardia.fecha_guardia}</td>
-                                <td className="px-4 py-2 border-b">{guardia.tecnico_nombre}</td>
-                                <td className="px-4 py-2 border-b">{guardia.provincia_nombre}</td>
+            <div className="text-center mt-4 bg-gray-300">
+                <h2 className="text-xl font-semibold text-center text-white mt-8 mb-4">Guardias Asignadas</h2>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
+                        <thead>
+                            <tr>
+                                <th className="px-4 py-2 border-b">Fecha</th>
+                                <th className="px-4 py-2 border-b">Técnico</th>
+                                <th className="px-4 py-2 border-b">Provincia</th>
+                                <th className="px-4 py-2 border-b">Guardias en el Mes</th> {/* Nueva columna */}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="mt-6 text-center">
-                <CSVLink
-                    data={csvData}
-                    headers={headers}
-                    filename={"guardias.csv"}
-                    className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
-                >
-                    Exportar a CSV
-                </CSVLink>
+                        </thead>
+                        <tbody>
+                            {guardias.map((guardia, index) => (
+                                <tr key={index}>
+                                    <td className="px-4 py-2 border-b">{guardia.fecha_guardia}</td>
+                                    <td className="px-4 py-2 border-b">{guardia.tecnico_nombre}</td>
+                                    <td className="px-4 py-2 border-b">{guardia.provincia_nombre}</td>
+                                    <td className="px-4 py-2 border-b">{guardia.countMesActual}</td> {/* Mostrar guardias del mes */}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="mt-6 text-center">
+                    <CSVLink
+                        data={csvData}
+                        headers={headers}
+                        filename={"guardias.csv"}
+                        className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
+                    >
+                        Exportar a CSV
+                    </CSVLink>
+                </div>
             </div>
         </div>
     );
