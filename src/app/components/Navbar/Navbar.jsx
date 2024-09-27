@@ -9,6 +9,7 @@ const navigation = [
     { name: 'Vacaciones', href: '#', current: false },
     { name: 'Pool', href: 'pool', current: false },
     { name: 'Matrículas', href: '/matriculas', current: false },
+    { name: 'Plataformas', href: '/plataformas', current: false },
 
 ];
 
