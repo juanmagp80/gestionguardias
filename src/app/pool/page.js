@@ -95,7 +95,7 @@ export default function Pool() {
         }).join('\n');
 
         navigator.clipboard.writeText(textToCopy).then(() => {
-            alert('Datos copiados al portapapeles!');
+            alert('Datos copiados');
         }).catch(err => {
             console.error('Error al copiar los datos: ', err);
         });
