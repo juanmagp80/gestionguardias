@@ -55,38 +55,47 @@ export default function AsignarVacaciones() {
     };
 
     const handleAsignarVacaciones = async () => {
-        if (!tecnicoId || !fechaInicio || !fechaFin) {
+        if (!tecnicoId || !rangoSeleccionado) {
             console.error("Selecciona un técnico y un rango de fechas.");
             return;
         }
 
-        const fechaInicioISO = new Date(fechaInicio.getTime() - fechaInicio.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-        const fechaFinISO = new Date(fechaFin.getTime() - fechaFin.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        // Verificar si ya existen vacaciones para el técnico en el rango seleccionado
+        const { data: existingVacaciones, error: fetchError } = await supabase
+            .from('vacaciones')
+            .select('*')
+            .eq('tecnico_id', tecnicoId)
+            .gte('fecha_inicio', rangoSeleccionado.fecha_inicio)
+            .lte('fecha_fin', rangoSeleccionado.fecha_fin);
 
+        if (fetchError) {
+            console.error("Error al verificar vacaciones existentes:", fetchError.message);
+            return;
+        }
+
+        if (existingVacaciones.length > 0) {
+            console.error("Ya existen vacaciones para este técnico en este rango.");
+            alert("Ya existen vacaciones asignadas para este técnico en este rango.");
+            return;
+        }
+
+        // Si no hay conflictos, proceder a insertar
         const { error } = await supabase.from('vacaciones').insert([
-            { tecnico_id: tecnicoId, fecha_inicio: fechaInicioISO, fecha_fin: fechaFinISO }
+            {
+                tecnico_id: tecnicoId,
+                fecha_inicio: rangoSeleccionado.fecha_inicio,
+                fecha_fin: rangoSeleccionado.fecha_fin
+            }
         ]);
 
-        try {
-            const { error } = await supabase
-                .from("vacaciones")
-                .insert({
-                    tecnico_id: tecnicoId,
-                    fecha_inicio: rangoSeleccionado.fecha_inicio,
-                    fecha_fin: rangoSeleccionado.fecha_fin
-                });
-
-            if (error) {
-                throw error;
-            }
-
+        if (error) {
+            console.error("Error al asignar vacaciones:", error.message);
+        } else {
             alert("Vacaciones asignadas correctamente.");
             setRangoSeleccionado(null);
             setTecnicoId("");
             setProvinciaId("");
             setTecnicos([]);
-        } catch (error) {
-            console.error("Error al asignar vacaciones:", error.message);
         }
     };
 
