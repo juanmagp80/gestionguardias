@@ -6,7 +6,7 @@ const navigation = [
     { name: 'Técnicos', href: '/tecnicos', current: false },
     { name: 'Provincias', href: '/provincias', current: false },
     { name: 'Guardias', href: '/guardias', current: false },
-    { name: 'Vacaciones', href: '#', current: false },
+    { name: 'Vacaciones', href: '/vacaciones', current: false },
     { name: 'Pool', href: 'pool', current: false },
     { name: 'Matrículas', href: '/matriculas', current: false },
     { name: 'Plataformas', href: '/plataformas', current: false },
