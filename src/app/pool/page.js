@@ -85,6 +85,21 @@ export default function Pool() {
 
         XLSX.writeFile(wb, 'tecnicos.xlsx');
     };
+    const copyToClipboard = () => {
+        const textToCopy = tecnicos.map(tecnico => {
+            const baseData = `Nombre: ${tecnico.nombre}, DNI: ${tecnico.dni}, Telefono: ${tecnico.telefono}`;
+            if (showVehiculos) {
+                return `${baseData}, Modelo Vehículo: ${tecnico.matriculas?.map(v => v.modelo).join(', ')}, Matrícula: ${tecnico.matriculas?.map(v => v.matricula).join(', ')}`;
+            }
+            return baseData;
+        }).join('\n');
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('Datos copiados al portapapeles!');
+        }).catch(err => {
+            console.error('Error al copiar los datos: ', err);
+        });
+    };
 
 
     return (
@@ -162,6 +177,12 @@ export default function Pool() {
                         className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
                     >
                         Exportar a Excel
+                    </button>
+                    <button
+                        onClick={copyToClipboard}
+                        className="ml-4 bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    >
+                        Copiar
                     </button>
                 </div>
             </div>
