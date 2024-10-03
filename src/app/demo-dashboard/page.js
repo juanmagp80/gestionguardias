@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 
 export async function getServerSideProps() {
     const { user } = await supabase.auth.getUser();
