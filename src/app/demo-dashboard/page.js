@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
-
 export default async function DemoDashboard() {
     // Obtener el usuario autenticado desde Supabase
     const { data: { user } } = await supabase.auth.getUser();
