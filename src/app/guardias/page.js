@@ -1,8 +1,8 @@
 "use client";
-import { es } from 'date-fns/locale'; // Importar locale en español
+import { es } from 'date-fns/locale';
 import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
-import 'react-calendar/dist/Calendar.css'; // Importar estilos del calendario
+import 'react-calendar/dist/Calendar.css';
 import { CSVLink } from "react-csv";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -14,6 +14,8 @@ export default function Guardias() {
     const [guardias, setGuardias] = useState([]);
     const [semanaSeleccionada, setSemanaSeleccionada] = useState(null);
     const [csvData, setCsvData] = useState([]);
+    const [mensajeConfirmacion, setMensajeConfirmacion] = useState("");
+    const [nuevoTecnicoId, setNuevoTecnicoId] = useState("");
 
     useEffect(() => {
         fetchProvincias();
@@ -52,48 +54,29 @@ export default function Guardias() {
             setTecnicos(data);
         }
     };
+
     const fetchGuardias = async () => {
+        if (!semanaSeleccionada) return;
+
         const { inicio, fin } = semanaSeleccionada;
-        const fechaActual = new Date();
-        const primerDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1).toISOString().split("T")[0];
-        const ultimoDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).toISOString().split("T")[0];
 
         try {
-            // Recuperar todas las guardias para el periodo seleccionado
-            const { data: guardiasData, error: guardiasError } = await supabase
+            const { data: guardiasData, error } = await supabase
                 .from('guardias')
                 .select(`
                     fecha_guardia,
                     tecnico_id,
-                    tecnicos (nombre, provincia_id),
+                    tecnicos (nombre),
                     provincias (nombre)
                 `)
                 .gte('fecha_guardia', inicio)
                 .lte('fecha_guardia', fin)
                 .order('fecha_guardia', { ascending: true });
 
-            if (guardiasError) {
-                throw guardiasError;
+            if (error) {
+                throw error;
             }
 
-            // Recuperar todas las guardias del mes actual para contar
-            const { data: guardiasMesData, error: guardiasMesError } = await supabase
-                .from('guardias')
-                .select('tecnico_id')
-                .gte('fecha_guardia', primerDiaMes)
-                .lte('fecha_guardia', ultimoDiaMes);
-
-            if (guardiasMesError) {
-                throw guardiasMesError;
-            }
-
-            // Contar la cantidad de guardias por técnico en el mes actual
-            const conteoMesActual = guardiasMesData.reduce((acc, { tecnico_id }) => {
-                acc[tecnico_id] = (acc[tecnico_id] || 0) + 1;
-                return acc;
-            }, {});
-
-            // Procesar los datos
             const processedData = guardiasData.map(guardia => {
                 const tecnico = guardia.tecnicos || {};
                 const provincia = guardia.provincias || {};
@@ -101,7 +84,6 @@ export default function Guardias() {
                     fecha_guardia: guardia.fecha_guardia,
                     tecnico_nombre: tecnico.nombre ? tecnico.nombre.trim() : "N/A",
                     provincia_nombre: provincia.nombre ? provincia.nombre.trim() : "N/A",
-                    countMesActual: conteoMesActual[guardia.tecnico_id] || 0 // Guardias del mes actual
                 };
             });
 
@@ -111,27 +93,13 @@ export default function Guardias() {
         }
     };
 
-
-
-    useEffect(() => {
-        if (guardias.length > 0) {
-            setCsvData(
-                guardias.map(guardia => ({
-                    fecha_guardia: guardia.fecha_guardia,
-                    tecnico: guardia.tecnico_nombre,
-                    provincia: guardia.provincia_nombre
-                }))
-            );
-        }
-    }, [guardias]);
-
     const calcularSemanaDesdeLunes = (lunes) => {
         const fechaInicio = new Date(lunes);
-        fechaInicio.setDate(fechaInicio.getDate() - (fechaInicio.getDay() - 1)); // Ajustar al lunes de la semana
-        fechaInicio.setHours(0, 0, 0, 0); // Establecer la hora en 00:00:00
+        fechaInicio.setDate(fechaInicio.getDate() - (fechaInicio.getDay() - 1));
+        fechaInicio.setHours(0, 0, 0, 0);
 
         const fechaFin = new Date(fechaInicio);
-        fechaFin.setDate(fechaFin.getDate() + 6); // Fin de semana (domingo)
+        fechaFin.setDate(fechaFin.getDate() + 6);
 
         return {
             inicio: fechaInicio.toISOString().split("T")[0],
@@ -148,40 +116,30 @@ export default function Guardias() {
         }
     };
 
-    const handleAsignarGuardias = async () => {
+    const asignarGuardiasAutomaticamente = async () => {
         if (!tecnicoId || !semanaSeleccionada) {
             console.error("Selecciona un técnico y una semana antes de asignar guardias.");
             return;
         }
 
-        // Convertir tecnicoId a número y eliminar espacios en blanco
-        const tecnicoIdNum = parseInt(tecnicoId.trim(), 10);
-
-        // Obtener el técnico seleccionado para obtener su provincia_id
-        const tecnicoSeleccionado = tecnicos.find(tecnico => tecnico.id === tecnicoIdNum);
-        console.log("Técnico ID seleccionado:", tecnicoIdNum);
-        console.log("Lista de técnicos:", tecnicos);
-
-        if (!tecnicoSeleccionado) {
-            console.error("Técnico no encontrado.");
-            return;
-        }
-
-        const { provincia_id } = tecnicoSeleccionado;
         const { inicio } = semanaSeleccionada;
+        const fechaInicio = new Date(inicio);
+
+        const tecnicosDisponibles = tecnicos.map(tecnico => tecnico.id);
+        const totalSemanas = 12; // 3 meses
         const fechasGuardias = [];
 
-        for (let i = 0; i < 7; i++) {
-            const fecha = new Date(inicio);
-            fecha.setDate(fecha.getDate() + i);
-            if (fecha.getDay() === 6) { // Solo insertar los sábados
-                fechasGuardias.push({
-                    tecnico_id: tecnicoIdNum,
-                    provincia_id: provincia_id, // Incluir provincia_id
-                    fecha_guardia: fecha.toISOString().split("T")[0],
-                    pago: 100, // Ejemplo: $100 por guardia
-                });
-            }
+        for (let semana = 0; semana < totalSemanas; semana++) {
+            const tecnicoIdActual = tecnicosDisponibles[(semana % tecnicosDisponibles.length)];
+            const fechaGuardia = new Date(fechaInicio);
+            fechaGuardia.setDate(fechaGuardia.getDate() + (semana * 7));
+
+            fechasGuardias.push({
+                tecnico_id: tecnicoIdActual,
+                provincia_id: provinciaId,
+                fecha_guardia: fechaGuardia.toISOString().split("T")[0],
+                pago: 100,
+            });
         }
 
         try {
@@ -195,9 +153,41 @@ export default function Guardias() {
 
             console.log("Guardias asignadas correctamente:", data);
             setGuardias([...guardias, ...(data || [])]);
-            setSemanaSeleccionada(null); // Resetear la selección después de guardar
+            setMensajeConfirmacion("Guardias asignadas correctamente.");
+            setTimeout(() => {
+                setMensajeConfirmacion("");
+            }, 3000);
+            setSemanaSeleccionada(null);
         } catch (error) {
             console.error("Error al asignar guardias:", error.message);
+        }
+    };
+
+    const handleCambiarTecnico = async (fechaGuardia) => {
+        if (!nuevoTecnicoId) {
+            console.error("Selecciona un nuevo técnico antes de cambiar.");
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from("guardias")
+                .update({ tecnico_id: nuevoTecnicoId })
+                .eq('fecha_guardia', fechaGuardia)
+                .eq('provincia_id', provinciaId);
+
+            if (error) {
+                throw error;
+            }
+
+            console.log("Técnico cambiado correctamente:", data);
+            setMensajeConfirmacion("Técnico cambiado correctamente.");
+            setTimeout(() => {
+                setMensajeConfirmacion("");
+            }, 3000);
+            fetchGuardias(); // Actualiza la lista de guardias
+        } catch (error) {
+            console.error("Error al cambiar técnico:", error.message);
         }
     };
 
@@ -208,7 +198,7 @@ export default function Guardias() {
             const finSemana = new Date(semanaSeleccionada.fin);
 
             if (fecha >= inicioSemana && fecha <= finSemana) {
-                return 'bg-blue-500 text-white rounded-lg shadow-md'; // Cambiar estilos
+                return 'bg-blue-500 text-white rounded-lg shadow-md';
             }
         }
         return null;
@@ -265,12 +255,17 @@ export default function Guardias() {
 
             <div className="text-center">
                 <button
-                    onClick={handleAsignarGuardias}
-                    className="bg-red-500 text-white   text-white px-6 py-3 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onClick={asignarGuardiasAutomaticamente}
+                    className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                     Asignar Guardias
                 </button>
             </div>
+
+            {mensajeConfirmacion && (
+                <div className="mt-4 text-center text-green-600">{mensajeConfirmacion}</div>
+            )}
+
             <div className="text-center mt-4 bg-gray-300">
                 <h2 className="text-xl font-semibold text-center text-white mt-8 mb-4">Guardias Asignadas</h2>
                 <div className="overflow-x-auto">
@@ -280,7 +275,7 @@ export default function Guardias() {
                                 <th className="px-4 py-2 border-b">Fecha</th>
                                 <th className="px-4 py-2 border-b">Técnico</th>
                                 <th className="px-4 py-2 border-b">Provincia</th>
-                                <th className="px-4 py-2 border-b">Guardias en el Mes</th> {/* Nueva columna */}
+                                <th className="px-4 py-2 border-b">Cambiar Técnico</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -289,7 +284,26 @@ export default function Guardias() {
                                     <td className="px-4 py-2 border-b">{guardia.fecha_guardia}</td>
                                     <td className="px-4 py-2 border-b">{guardia.tecnico_nombre}</td>
                                     <td className="px-4 py-2 border-b">{guardia.provincia_nombre}</td>
-                                    <td className="px-4 py-2 border-b">{guardia.countMesActual}</td> {/* Mostrar guardias del mes */}
+                                    <td className="px-4 py-2 border-b">
+                                        <select
+                                            value={nuevoTecnicoId}
+                                            onChange={(e) => setNuevoTecnicoId(e.target.value)}
+                                            className="border border-gray-300 rounded-lg"
+                                        >
+                                            <option value="">Selecciona un nuevo técnico</option>
+                                            {tecnicos.map((tecnico) => (
+                                                <option key={tecnico.id} value={tecnico.id}>
+                                                    {tecnico.nombre}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={() => handleCambiarTecnico(guardia.fecha_guardia)}
+                                            className="ml-2 bg-blue-500 text-white px-2 py-1 rounded-lg"
+                                        >
+                                            Cambiar
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
