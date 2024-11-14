@@ -6,320 +6,354 @@ import 'react-calendar/dist/Calendar.css';
 import { CSVLink } from "react-csv";
 import { supabase } from "../../../lib/supabaseClient";
 
-export default function Guardias() {
-    const [provincias, setProvincias] = useState([]);
-    const [tecnicos, setTecnicos] = useState([]);
+export default function AsignacionGuardias() {
     const [provinciaId, setProvinciaId] = useState("");
     const [tecnicoId, setTecnicoId] = useState("");
+    const [provincias, setProvincias] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [semanaInicio, setSemanaInicio] = useState(null);
     const [guardias, setGuardias] = useState([]);
-    const [semanaSeleccionada, setSemanaSeleccionada] = useState(null);
-    const [csvData, setCsvData] = useState([]);
-    const [mensajeConfirmacion, setMensajeConfirmacion] = useState("");
-    const [nuevoTecnicoId, setNuevoTecnicoId] = useState("");
+    const [mensaje, setMensaje] = useState("");
+    const [tecnicoSeleccionadoCambio, setTecnicoSeleccionadoCambio] = useState({});
+    const [actualizando, setActualizando] = useState(false);
+
 
     useEffect(() => {
-        fetchProvincias();
+        cargarProvincias();
     }, []);
 
     useEffect(() => {
         if (provinciaId) {
-            fetchTecnicos(provinciaId);
+            cargarTecnicos();
+            cargarGuardias();
         }
     }, [provinciaId]);
 
     useEffect(() => {
-        if (semanaSeleccionada) {
-            fetchGuardias();
+        if (semanaInicio) {
+            cargarGuardias();
         }
-    }, [semanaSeleccionada]);
+    }, [semanaInicio]);
 
-    const fetchProvincias = async () => {
-        const { data, error } = await supabase.from("provincias").select("*");
-        if (error) {
-            console.error("Error al cargar provincias:", error.message);
-        } else {
-            setProvincias(data);
-        }
+    const cargarProvincias = async () => {
+        const { data } = await supabase.from('provincias').select('*');
+        setProvincias(data || []);
     };
 
-    const fetchTecnicos = async (provinciaId) => {
-        const { data, error } = await supabase
-            .from("tecnicos")
-            .select("*")
-            .eq("provincia_id", provinciaId);
-
-        if (error) {
-            console.error("Error al cargar técnicos:", error.message);
-        } else {
-            setTecnicos(data);
-        }
+    const cargarTecnicos = async () => {
+        const { data } = await supabase
+            .from('tecnicos')
+            .select('*')
+            .eq('provincia_id', provinciaId);
+        setTecnicos(data || []);
     };
 
-    const fetchGuardias = async () => {
-        if (!semanaSeleccionada) return;
+    const cargarGuardias = async () => {
+        if (!semanaInicio) return;
 
-        const { inicio, fin } = semanaSeleccionada;
+        const finSemana = new Date(semanaInicio);
+        finSemana.setDate(finSemana.getDate() + 6);
 
         try {
-            const { data: guardiasData, error } = await supabase
+            const { data, error } = await supabase
                 .from('guardias')
                 .select(`
+                    id,
                     fecha_guardia,
                     tecnico_id,
-                    tecnicos (nombre),
-                    provincias (nombre)
+                    provincia_id,
+                    tecnicos (id, nombre),
+                    provincias (id, nombre)
                 `)
-                .gte('fecha_guardia', inicio)
-                .lte('fecha_guardia', fin)
+                .gte('fecha_guardia', semanaInicio.toISOString().split('T')[0])
+                .lte('fecha_guardia', finSemana.toISOString().split('T')[0])
+                .order('provincias (nombre)', { ascending: true })
                 .order('fecha_guardia', { ascending: true });
 
-            if (error) {
-                throw error;
-            }
+            if (error) throw error;
 
-            const processedData = guardiasData.map(guardia => {
-                const tecnico = guardia.tecnicos || {};
-                const provincia = guardia.provincias || {};
-                return {
-                    fecha_guardia: guardia.fecha_guardia,
-                    tecnico_nombre: tecnico.nombre ? tecnico.nombre.trim() : "N/A",
-                    provincia_nombre: provincia.nombre ? provincia.nombre.trim() : "N/A",
-                };
-            });
+            // Forzar actualización del estado
+            setGuardias([...data]);
 
-            setGuardias(processedData);
         } catch (error) {
-            console.error("Error al recuperar guardias:", error.message);
+            console.error("Error al cargar guardias:", error);
+            setMensaje("Error al cargar guardias");
         }
     };
 
-    const calcularSemanaDesdeLunes = (lunes) => {
-        const fechaInicio = new Date(lunes);
-        fechaInicio.setDate(fechaInicio.getDate() - (fechaInicio.getDay() - 1));
-        fechaInicio.setHours(0, 0, 0, 0);
+    const asignarGuardias = async () => {
+        if (!provinciaId || !tecnicoId || !semanaInicio) {
+            setMensaje("Selecciona provincia, técnico y semana");
+            return;
+        }
 
-        const fechaFin = new Date(fechaInicio);
-        fechaFin.setDate(fechaFin.getDate() + 6);
+        try {
+            if (!tecnicos || tecnicos.length === 0) {
+                setMensaje("No hay técnicos disponibles");
+                return;
+            }
 
-        return {
-            inicio: fechaInicio.toISOString().split("T")[0],
-            fin: fechaFin.toISOString().split("T")[0],
-        };
+            const tecnicoSeleccionado = tecnicos.find(t => t.id.toString() === tecnicoId.toString());
+
+            if (!tecnicoSeleccionado) {
+                setMensaje("Técnico seleccionado no encontrado");
+                return;
+            }
+
+            const otrosTecnicos = tecnicos.filter(t => t.id.toString() !== tecnicoId.toString());
+            const tecnicosOrdenados = [tecnicoSeleccionado, ...otrosTecnicos];
+
+            const nuevasGuardias = [];
+            const fechaInicio = new Date(semanaInicio);
+            const fechaFin = new Date(fechaInicio);
+            fechaFin.setDate(fechaFin.getDate() + (12 * 7));
+
+            for (let i = 0; i < 12; i++) {
+                const fecha = new Date(fechaInicio);
+                fecha.setDate(fecha.getDate() + (i * 7));
+
+                const tecnicoIndex = i % tecnicosOrdenados.length;
+                const tecnicoAsignado = tecnicosOrdenados[tecnicoIndex];
+
+                if (!tecnicoAsignado || !tecnicoAsignado.id) {
+                    throw new Error(`Técnico no válido en la posición ${tecnicoIndex}`);
+                }
+
+                nuevasGuardias.push({
+                    fecha_guardia: fecha.toISOString().split('T')[0],
+                    tecnico_id: tecnicoAsignado.id,
+                    provincia_id: provinciaId,
+                    pago: 100
+                });
+            }
+
+            const { error: deleteError } = await supabase
+                .from('guardias')
+                .delete()
+                .eq('provincia_id', provinciaId)
+                .gte('fecha_guardia', fechaInicio.toISOString().split('T')[0])
+                .lt('fecha_guardia', fechaFin.toISOString().split('T')[0]);
+
+            if (deleteError) throw deleteError;
+
+            const { error: insertError } = await supabase
+                .from('guardias')
+                .insert(nuevasGuardias);
+
+            if (insertError) throw insertError;
+
+            setMensaje("Guardias asignadas correctamente");
+            cargarGuardias();
+        } catch (error) {
+            console.error("Error al asignar guardias:", error);
+            setMensaje(`Error al asignar guardias: ${error.message}`);
+        }
     };
+    const cambiarTecnico = async (guardiaId, nuevoTecnicoId, fechaGuardia) => {
+        if (!nuevoTecnicoId || actualizando) return;
 
-    const handleDayClick = (date) => {
+        try {
+            setActualizando(true);
+
+            // 1. Obtener la guardia y provincia actual
+            const { data: guardiaActual } = await supabase
+                .from('guardias')
+                .select('*, tecnicos(nombre)')
+                .eq('id', guardiaId)
+                .single();
+
+            if (!guardiaActual) {
+                throw new Error('Guardia no encontrada');
+            }
+
+            // 2. Obtener las guardias futuras
+            const { data: guardiasFuturas } = await supabase
+                .from('guardias')
+                .select('*')
+                .eq('provincia_id', guardiaActual.provincia_id)
+                .gte('fecha_guardia', fechaGuardia)
+                .order('fecha_guardia', { ascending: true });
+
+            if (!guardiasFuturas?.length) return;
+
+            // 3. Crear array de técnicos rotativo
+            const tecnicosDisponibles = tecnicos.filter(t => t.provincia_id === guardiaActual.provincia_id);
+            const nuevoTecnicoIndex = tecnicosDisponibles.findIndex(t => t.id.toString() === nuevoTecnicoId.toString());
+            const tecnicosRotados = [
+                ...tecnicosDisponibles.slice(nuevoTecnicoIndex),
+                ...tecnicosDisponibles.slice(0, nuevoTecnicoIndex)
+            ];
+
+            // 4. Actualizar cada guardia
+            const actualizaciones = guardiasFuturas.map((guardia, index) => ({
+                id: guardia.id,
+                tecnico_id: tecnicosRotados[index % tecnicosRotados.length].id
+            }));
+
+            // 5. Realizar actualizaciones en batch
+            for (const actualizacion of actualizaciones) {
+                const { error } = await supabase
+                    .from('guardias')
+                    .update({ tecnico_id: actualizacion.tecnico_id })
+                    .eq('id', actualizacion.id);
+
+                if (error) throw error;
+            }
+
+            // 6. Recargar guardias
+            await cargarGuardias();
+
+            setMensaje("Guardias actualizadas correctamente");
+            setTecnicoSeleccionadoCambio({});
+        } catch (error) {
+            console.error("Error al cambiar técnico:", error);
+            setMensaje("Error al actualizar guardias: " + error.message);
+        } finally {
+            setActualizando(false);
+        }
+    };
+    const handleCalendarClick = (date) => {
         if (date.getDay() === 1) {
-            const semana = calcularSemanaDesdeLunes(date);
-            setSemanaSeleccionada(semana);
+            setSemanaInicio(date);
         } else {
-            setSemanaSeleccionada(null);
+            setMensaje("Por favor, selecciona un lunes");
         }
     };
-
-    const asignarGuardiasAutomaticamente = async () => {
-        if (!tecnicoId || !semanaSeleccionada) {
-            console.error("Selecciona un técnico y una semana antes de asignar guardias.");
-            return;
-        }
-
-        const { inicio } = semanaSeleccionada;
-        const fechaInicio = new Date(inicio);
-
-        const tecnicosDisponibles = tecnicos.map(tecnico => tecnico.id);
-        const totalSemanas = 12; // 3 meses
-        const fechasGuardias = [];
-
-        for (let semana = 0; semana < totalSemanas; semana++) {
-            const tecnicoIdActual = tecnicosDisponibles[(semana % tecnicosDisponibles.length)];
-            const fechaGuardia = new Date(fechaInicio);
-            fechaGuardia.setDate(fechaGuardia.getDate() + (semana * 7));
-
-            fechasGuardias.push({
-                tecnico_id: tecnicoIdActual,
-                provincia_id: provinciaId,
-                fecha_guardia: fechaGuardia.toISOString().split("T")[0],
-                pago: 100,
-            });
-        }
-
-        try {
-            const { data, error } = await supabase
-                .from("guardias")
-                .insert(fechasGuardias);
-
-            if (error) {
-                throw error;
-            }
-
-            console.log("Guardias asignadas correctamente:", data);
-            setGuardias([...guardias, ...(data || [])]);
-            setMensajeConfirmacion("Guardias asignadas correctamente.");
-            setTimeout(() => {
-                setMensajeConfirmacion("");
-            }, 3000);
-            setSemanaSeleccionada(null);
-        } catch (error) {
-            console.error("Error al asignar guardias:", error.message);
-        }
-    };
-
-    const handleCambiarTecnico = async (fechaGuardia) => {
-        if (!nuevoTecnicoId) {
-            console.error("Selecciona un nuevo técnico antes de cambiar.");
-            return;
-        }
-
-        try {
-            const { data, error } = await supabase
-                .from("guardias")
-                .update({ tecnico_id: nuevoTecnicoId })
-                .eq('fecha_guardia', fechaGuardia)
-                .eq('provincia_id', provinciaId);
-
-            if (error) {
-                throw error;
-            }
-
-            console.log("Técnico cambiado correctamente:", data);
-            setMensajeConfirmacion("Técnico cambiado correctamente.");
-            setTimeout(() => {
-                setMensajeConfirmacion("");
-            }, 3000);
-            fetchGuardias(); // Actualiza la lista de guardias
-        } catch (error) {
-            console.error("Error al cambiar técnico:", error.message);
-        }
-    };
-
-    const tileClassName = ({ date, view }) => {
-        if (view === 'month' && semanaSeleccionada) {
-            const fecha = new Date(date);
-            const inicioSemana = new Date(semanaSeleccionada.inicio);
-            const finSemana = new Date(semanaSeleccionada.fin);
-
-            if (fecha >= inicioSemana && fecha <= finSemana) {
-                return 'bg-blue-500 text-white rounded-lg shadow-md';
-            }
-        }
-        return null;
-    };
-
-    const headers = [
-        { label: "Fecha", key: "fecha_guardia" },
-        { label: "Técnico", key: "tecnico" },
-        { label: "Provincia", key: "provincia" }
-    ];
 
     return (
-        <div className="p-6 min-h-screen">
-            <h1 className="text-2xl text-white font-semibold text-center mb-6">Asignar Guardias</h1>
+        <div className="max-w-4xl mx-auto p-6">
+            <h1 className="text-2xl font-bold mb-6 text-white">Asignación de Guardias</h1>
 
-            <select
-                value={provinciaId}
-                onChange={(e) => setProvinciaId(e.target.value)}
-                className="block w-full max-w-xs mx-auto mb-4 px-4 py-2 border border-gray-300 rounded-lg"
-            >
-                <option value="">Selecciona una provincia</option>
-                {provincias.map((provincia) => (
-                    <option key={provincia.id} value={provincia.id}>
-                        {provincia.nombre}
-                    </option>
-                ))}
-            </select>
+            <div className="space-y-4 mb-6">
+                <select
+                    value={provinciaId}
+                    onChange={(e) => setProvinciaId(e.target.value)}
+                    className="w-full p-2 border rounded"
+                >
+                    <option value="">Selecciona Provincia</option>
+                    {provincias.map(p => (
+                        <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                </select>
 
-            <select
-                value={tecnicoId}
-                onChange={(e) => setTecnicoId(e.target.value)}
-                disabled={!provinciaId}
-                className="block w-full max-w-xs mx-auto mb-4 px-4 py-2 border border-gray-300 rounded-lg"
-            >
-                <option value="">Selecciona un técnico</option>
-                {tecnicos.map((tecnico) => (
-                    <option key={tecnico.id} value={tecnico.id}>
-                        {tecnico.nombre}
-                    </option>
-                ))}
-            </select>
+                <select
+                    value={tecnicoId}
+                    onChange={(e) => setTecnicoId(e.target.value)}
+                    className="w-full p-2 border rounded"
+                    disabled={!provinciaId}
+                >
+                    <option value="">Selecciona Técnico Inicial</option>
+                    {tecnicos.map(t => (
+                        <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                </select>
 
-            <div className="max-w-md mx-auto mb-6">
-                <Calendar
-                    value={semanaSeleccionada ? new Date(semanaSeleccionada.inicio) : new Date()}
-                    onClickDay={handleDayClick}
-                    tileClassName={tileClassName}
-                    locale={es}
-                    showNeighboringMonth={false}
-                    minDetail="month"
-                    className="react-calendar bg-gray-200 shadow-lg rounded-lg border border-gray-300"
-                />
-            </div>
+                <div className="calendar-container">
+                    <Calendar
+                        onChange={handleCalendarClick}
+                        value={semanaInicio}
+                        locale={es}
+                        className="w-full border rounded bg-white"
+                    />
+                </div>
 
-            <div className="text-center">
                 <button
-                    onClick={asignarGuardiasAutomaticamente}
-                    className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onClick={asignarGuardias}
+                    disabled={!provinciaId || !tecnicoId || !semanaInicio}
+                    className="w-full p-2 bg-red-500 text-white rounded disabled:bg-gray-300"
                 >
                     Asignar Guardias
                 </button>
+
+                {mensaje && (
+                    <div className="p-2 bg-gray-100 rounded text-center">
+                        {mensaje}
+                    </div>
+                )}
             </div>
 
-            {mensajeConfirmacion && (
-                <div className="mt-4 text-center text-green-600">{mensajeConfirmacion}</div>
-            )}
-
-            <div className="text-center mt-4 bg-gray-300">
-                <h2 className="text-xl font-semibold text-center text-white mt-8 mb-4">Guardias Asignadas</h2>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
-                        <thead>
-                            <tr>
-                                <th className="px-4 py-2 border-b">Fecha</th>
-                                <th className="px-4 py-2 border-b">Técnico</th>
-                                <th className="px-4 py-2 border-b">Provincia</th>
-                                <th className="px-4 py-2 border-b">Cambiar Técnico</th>
+            <div className="overflow-x-auto mt-6">
+                <table className="w-full border rounded-lg bg-white">
+                    <thead className="bg-gray-100">
+                        <tr>
+                            <th className="border p-2">Fecha</th>
+                            <th className="border p-2">Provincia</th>
+                            <th className="border p-2">Técnico</th>
+                            <th className="border p-2">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {guardias.map((guardia) => (
+                            <tr key={guardia.id || guardia.fecha_guardia}>
+                                <td className="border p-2">
+                                    {new Date(guardia.fecha_guardia).toLocaleDateString()}
+                                </td>
+                                <td className="border p-2 font-semibold">
+                                    {guardia.provincias?.nombre}
+                                </td>
+                                <td className="border p-2">
+                                    {guardia.tecnicos?.nombre || 'No asignado'}
+                                </td>
+                                <td className="border p-2">
+                                    {guardia.provincia_id.toString() === provinciaId.toString() && (
+                                        <div className="flex items-center space-x-2">
+                                            <select
+                                                value={tecnicoSeleccionadoCambio[guardia.id] || ""}
+                                                onChange={(e) => {
+                                                    const nuevoValor = e.target.value;
+                                                    setTecnicoSeleccionadoCambio(prev => ({
+                                                        ...prev,
+                                                        [guardia.id]: nuevoValor
+                                                    }));
+                                                }}
+                                                className="p-1 border rounded"
+                                            >
+                                                <option value="">Seleccionar técnico</option>
+                                                {tecnicos.map((t) => (
+                                                    <option key={t.id} value={t.id}>
+                                                        {t.nombre}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('¿Estás seguro de que deseas cambiar el técnico para esta guardia y las siguientes?')) {
+                                                        cambiarTecnico(
+                                                            guardia.id,
+                                                            tecnicoSeleccionadoCambio[guardia.id],
+                                                            guardia.fecha_guardia
+                                                        );
+                                                    }
+                                                }}
+                                                disabled={actualizando || !tecnicoSeleccionadoCambio[guardia.id]}
+                                                className="bg-blue-500 text-white px-3 py-1 rounded disabled:bg-gray-300"
+                                            >
+                                                {actualizando ? 'Actualizando...' : 'Cambiar'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {guardias.map((guardia, index) => (
-                                <tr key={index}>
-                                    <td className="px-4 py-2 border-b">{guardia.fecha_guardia}</td>
-                                    <td className="px-4 py-2 border-b">{guardia.tecnico_nombre}</td>
-                                    <td className="px-4 py-2 border-b">{guardia.provincia_nombre}</td>
-                                    <td className="px-4 py-2 border-b">
-                                        <select
-                                            value={nuevoTecnicoId}
-                                            onChange={(e) => setNuevoTecnicoId(e.target.value)}
-                                            className="border border-gray-300 rounded-lg"
-                                        >
-                                            <option value="">Selecciona un nuevo técnico</option>
-                                            {tecnicos.map((tecnico) => (
-                                                <option key={tecnico.id} value={tecnico.id}>
-                                                    {tecnico.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <button
-                                            onClick={() => handleCambiarTecnico(guardia.fecha_guardia)}
-                                            className="ml-2 bg-blue-500 text-white px-2 py-1 rounded-lg"
-                                        >
-                                            Cambiar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="mt-6 text-center">
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {guardias.length > 0 && (
+                <div className="mt-4">
                     <CSVLink
-                        data={csvData}
-                        headers={headers}
-                        filename={"guardias.csv"}
-                        className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
+                        data={guardias.map(g => ({
+                            fecha: g.fecha_guardia,
+                            tecnico: g.tecnicos?.nombre || 'No asignado',
+                            provincia: g.provincias?.nombre
+                        }))}
+                        filename="guardias.csv"
+                        className="inline-block p-2 bg-green-500 text-white rounded"
                     >
                         Exportar a CSV
                     </CSVLink>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
