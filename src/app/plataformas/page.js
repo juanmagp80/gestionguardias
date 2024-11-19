@@ -91,7 +91,7 @@ const OrderPage = () => {
         const newNotifications = orders.filter(order => {
             const orderDate = new Date(order.date);
             console.log('Order date:', orderDate.toISOString().split('T')[0]);
-            return orderDate.toISOString().split('T')[0] === fourDaysFromNow.toISOString().split('T')[0];
+            return orderDate >= today && orderDate <= fourDaysFromNow;
         });
 
         console.log('Orders to notify:', newNotifications);
@@ -159,7 +159,7 @@ const OrderPage = () => {
                     <ul style={styles.notificationList}>
                         {notifications.map((order) => (
                             <li key={order.id} style={styles.notificationItem}>
-                                La orden #{order.order_number} está programada para instalarse en 4 días.
+                                La orden #{order.order_number} está programada para instalarse en 4 días o menos.
                             </li>
                         ))}
                     </ul>
