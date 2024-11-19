@@ -1,0 +1,81 @@
+/* styles.css */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.button {
+    transition: all 0.3s ease !important;
+}
+
+.save-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3) !important;
+    filter: brightness(110%) !important;
+}
+
+.check-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3) !important;
+    filter: brightness(110%) !important;
+}
+
+.button:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.react-calendar {
+    width: 100% !important;
+    background-color: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+}
+
+.react-calendar__navigation button {
+    color: #ffffff !important;
+    font-size: 1.2rem !important;
+    padding: 0.5rem !important;
+}
+
+.react-calendar__tile {
+    color: #ffffff !important;
+    padding: 0.75rem !important;
+    transition: all 0.2s !important;
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.react-calendar__tile--active {
+    background-color: #EF4444 !important;
+    color: white !important;
+}
+
+.react-calendar__tile--now {
+    background-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+    color: #D1D5DB !important;
+}
+
+input:focus {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+}
+
+.week-container:hover {
+    transform: translateY(-2px);
+    background-color: #404b60;
+}
+
+.order-item:hover {
+    background-color: #4B5563;
+}

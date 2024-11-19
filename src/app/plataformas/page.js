@@ -4,38 +4,51 @@ import { useEffect, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from '../../../lib/supabaseClient';
+import "./styles.css";
+import { styles } from './styles.js';
 
 const OrderPage = () => {
     const [date, setDate] = useState(new Date());
     const [orderNumber, setOrderNumber] = useState('');
     const [orders, setOrders] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [successMessage, setSuccessMessage] = useState('');
 
-    // Normaliza la fecha a medianoche en la zona horaria local
-    const normalizeDate = (date) => {
-        const normalizedDate = new Date(date);
-        normalizedDate.setHours(0, 0, 0, 0);
-        return normalizedDate;
-    };
 
-    // Maneja la inserción de una nueva orden
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const normalizedDate = normalizeDate(date);
+
+        const utcDate = new Date(Date.UTC(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            0, 0, 0, 0
+        ));
+
         const { data, error } = await supabase
             .from('orders')
-            .insert([{ date: normalizedDate, order_number: orderNumber }])
+            .insert([{
+                date: utcDate.toISOString().split('T')[0],
+                order_number: orderNumber
+            }])
             .select();
 
         if (error) {
-            console.error('Error saving order:', error);
+            console.error('Error guardando orden:', error);
+            setSuccessMessage('Error al guardar la orden');
         } else {
-            console.log('Order saved:', data);
-            fetchOrders(); // Actualiza la lista de órdenes después de insertar
+            console.log('Orden guardada:', data);
+            fetchOrders();
+            setOrderNumber('');
+            setSuccessMessage('Orden guardada correctamente'); // Añadir mensaje de éxito
+
+            // Limpiar mensaje después de 3 segundos
+            setTimeout(() => {
+                setSuccessMessage('');
+            }, 3000);
         }
     };
 
-    // Obtiene las órdenes desde Supabase
     const fetchOrders = async () => {
         const { data, error } = await supabase
             .from('orders')
@@ -43,13 +56,12 @@ const OrderPage = () => {
             .order('date', { ascending: true });
 
         if (error) {
-            console.error('Error fetching orders:', error);
+            console.error('Error obteniendo órdenes:', error);
         } else {
-            setOrders(data);
+            setOrders(data || []);
         }
     };
 
-    // Agrupa las órdenes por semana
     const groupOrdersByWeek = () => {
         const weeks = {};
         const currentWeek = getWeekNumber(new Date());
@@ -58,7 +70,6 @@ const OrderPage = () => {
             const orderDate = new Date(order.date);
             const orderWeek = getWeekNumber(orderDate);
 
-            // Solo incluir semanas que no hayan pasado
             if (orderWeek >= currentWeek) {
                 const week = `${orderDate.getFullYear()}-W${orderWeek}`;
                 if (!weeks[week]) {
@@ -70,7 +81,6 @@ const OrderPage = () => {
         return weeks;
     };
 
-    // Obtiene el número de semana de una fecha
     const getWeekNumber = (date) => {
         const d = new Date(date);
         d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -79,44 +89,40 @@ const OrderPage = () => {
         return weekNo;
     };
 
-    // Verifica las fechas y genera notificaciones
     const checkNotifications = () => {
         const today = new Date();
         const fourDaysFromNow = new Date(today);
         fourDaysFromNow.setDate(today.getDate() + 4);
 
-        console.log('Today:', today.toISOString().split('T')[0]);
-        console.log('Four days from now:', fourDaysFromNow.toISOString().split('T')[0]);
-
-        const newNotifications = orders.filter(order => {
+        const ordersToNotify = orders.filter(order => {
             const orderDate = new Date(order.date);
-            console.log('Order date:', orderDate.toISOString().split('T')[0]);
             return orderDate >= today && orderDate <= fourDaysFromNow;
         });
-
-        console.log('Orders to notify:', newNotifications);
-
-        newNotifications.forEach(order => {
+        ordersToNotify.forEach(order => {
             sendTelegramNotification(order);
         });
 
-        setNotifications(newNotifications);
+
+
+        setNotifications(ordersToNotify);
+
     };
 
-    // Función para enviar notificaciones por Telegram
+    const handleCheckNotifications = () => {
+        checkNotifications();
+    };
+
     const sendTelegramNotification = async (order) => {
         const botToken = '7584979783:AAEfvF3Cmf8lHWd25j9M6bo5XXT8ryPPZYA';
         const chatId = '-439505742';
-        const message = `La orden #${order.order_number} está programada para instalarse en 4 días con plataforma.`;
+        const message = `La orden #${order.order_number} está programada para instalarse en 4 días o menos, con plataforma.`;
 
         const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`;
 
         try {
             const response = await fetch(url);
             const data = await response.json();
-            if (data.ok) {
-                console.log('Mensaje de Telegram enviado:', data);
-            } else {
+            if (!data.ok) {
                 console.error('Error en la respuesta de Telegram:', data);
             }
         } catch (error) {
@@ -124,23 +130,21 @@ const OrderPage = () => {
         }
     };
 
-    // Ejecuta fetchOrders y checkNotifications cuando el componente se monta
     useEffect(() => {
         fetchOrders();
     }, []);
 
-    useEffect(() => {
-        checkNotifications();
-    }, [orders]);
-
     return (
         <div style={styles.container}>
-            <h1 style={styles.heading}>Gestión de Órdenes</h1>
+            <h1 className='font-dosis' style={styles.heading}>Órdenes con plataforma</h1>
 
-            {/* Formulario para seleccionar fecha y número de orden */}
             <form onSubmit={handleSubmit} style={styles.form}>
                 <div style={styles.calendarContainer}>
-                    <Calendar onChange={setDate} value={date} />
+                    <Calendar
+                        onChange={setDate}
+                        value={date}
+                        locale="es-ES"
+                    />
                 </div>
                 <input
                     type="text"
@@ -148,11 +152,35 @@ const OrderPage = () => {
                     onChange={(e) => setOrderNumber(e.target.value)}
                     placeholder="Número de orden"
                     style={styles.input}
+                    className='font-dosis'
                 />
-                <button type="submit" style={styles.button}>Guardar orden</button>
+                <button
+
+                    type="submit"
+                    className="button save-button font-dosis"
+                    style={styles.button}
+
+                >
+                    Guardar orden
+                </button>
+                {successMessage && (
+                    <div className="p-4 bg-gray-700 rounded-lg text-center text-white 
+                    border-l-4 border-green-500 shadow-lg animate-fadeIn mt-4">
+                        {successMessage}
+                    </div>
+                )}
             </form>
 
-            {/* Mostrar notificaciones */}
+            <div style={styles.buttonContainer}>
+                <button
+                    onClick={handleCheckNotifications}
+                    className="button check-button font-dosis"
+                    style={{ ...styles.button, backgroundColor: '#28a745' }}
+                >
+                    Consultar ordenes cercanas y enviar a Telegram
+                </button>
+            </div>
+
             {notifications.length > 0 && (
                 <div style={styles.notificationContainer}>
                     <h2 style={styles.notificationHeading}>Notificaciones</h2>
@@ -166,11 +194,11 @@ const OrderPage = () => {
                 </div>
             )}
 
-            {/* Mostrar órdenes agrupadas por semana */}
-            <h2 style={styles.subHeading}>Órdenes por Semana</h2>
+            <h2 className="pt-8 font-dosis" style={styles.subHeading}>Órdenes por Semana</h2>
             {Object.entries(groupOrdersByWeek()).map(([week, ordersInWeek]) => (
                 <div key={week} style={styles.weekContainer}>
-                    <h3 style={styles.weekHeading}>Semana: {week}</h3>
+                    <h3 className='font-dosis'
+                        style={styles.weekHeading}>Semana: {week}</h3>
                     <ul style={styles.orderList}>
                         {ordersInWeek.map((order) => (
                             <li key={order.id} style={styles.orderItem}>
@@ -184,97 +212,7 @@ const OrderPage = () => {
     );
 };
 
-export default OrderPage;
+// Actualizar el objeto styles con estos nuevos estilos:
 
-const styles = {
-    container: {
-        maxWidth: '800px',
-        margin: '0 auto',
-        padding: '20px',
-        fontFamily: 'Arial, sans-serif',
-        backgroundColor: '#f7f7f7',
-        borderRadius: '8px',
-        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-    },
-    heading: {
-        textAlign: 'center',
-        fontSize: '2rem',
-        color: '#333',
-        marginBottom: '20px',
-    },
-    form: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginBottom: '40px',
-    },
-    calendarContainer: {
-        marginBottom: '20px',
-    },
-    input: {
-        width: '100%',
-        maxWidth: '300px',
-        padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        marginBottom: '20px',
-        fontSize: '1rem',
-    },
-    button: {
-        padding: '10px 20px',
-        backgroundColor: '#007bff',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '1rem',
-    },
-    subHeading: {
-        fontSize: '1.5rem',
-        color: '#333',
-        marginBottom: '20px',
-    },
-    weekContainer: {
-        backgroundColor: '#fff',
-        padding: '10px',
-        borderRadius: '6px',
-        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)',
-        marginBottom: '20px',
-    },
-    weekHeading: {
-        fontSize: '1.2rem',
-        color: '#007bff',
-        marginBottom: '10px',
-    },
-    orderList: {
-        listStyleType: 'none',
-        paddingLeft: '0',
-    },
-    orderItem: {
-        padding: '8px 0',
-        borderBottom: '1px solid #eee',
-        fontSize: '1rem',
-    },
-    notificationContainer: {
-        backgroundColor: '#fff',
-        padding: '10px',
-        borderRadius: '6px',
-        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)',
-        marginBottom: '20px',
-    },
-    notificationHeading: {
-        fontSize: '1.5rem',
-        color: '#ff0000',
-        marginBottom: '10px',
-    },
-    notificationList: {
-        listStyleType: 'none',
-        paddingLeft: '0',
-    },
-    notificationItem: {
-        padding: '8px 0',
-        borderBottom: '1px solid #eee',
-        fontSize: '1rem',
-        color: '#ff0000',
-    },
-};
+
+export default OrderPage;

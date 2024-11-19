@@ -2,6 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Estilos del calendario */
+.react-calendar {
+  width: 100% !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.react-calendar__navigation button {
+  color: white !important;
+  font-size: 1.2rem !important;
+  padding: 0.5rem !important;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-calendar__tile {
+  color: white !important;
+  padding: 0.75rem !important;
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-calendar__tile--active {
+  background-color: #ef4444 !important;
+}
+
+.react-calendar__tile--now {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Mejoras de hover para botones */
+button, select {
+  transition: all 0.3s ease !important;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+select:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
+}
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 240, 240, 240;

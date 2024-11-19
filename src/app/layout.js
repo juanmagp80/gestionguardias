@@ -19,7 +19,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={dosis.variable}>
+    <html lang="es" className={dosis.variable}>
       <body className="bg-custom min-h-screen font-dosis">
         <Navbar />
         <main>{children}</main>
