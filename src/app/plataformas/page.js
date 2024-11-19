@@ -9,13 +9,23 @@ const OrderPage = () => {
     const [date, setDate] = useState(new Date());
     const [orderNumber, setOrderNumber] = useState('');
     const [orders, setOrders] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+
+    // Normaliza la fecha a medianoche en la zona horaria local
+    const normalizeDate = (date) => {
+        const normalizedDate = new Date(date);
+        normalizedDate.setHours(0, 0, 0, 0);
+        return normalizedDate;
+    };
 
     // Maneja la inserción de una nueva orden
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const normalizedDate = normalizeDate(date);
         const { data, error } = await supabase
             .from('orders')
-            .insert([{ date, order_number: orderNumber }]);
+            .insert([{ date: normalizedDate, order_number: orderNumber }])
+            .select();
 
         if (error) {
             console.error('Error saving order:', error);
@@ -69,10 +79,59 @@ const OrderPage = () => {
         return weekNo;
     };
 
-    // Ejecuta fetchOrders cuando el componente se monta
+    // Verifica las fechas y genera notificaciones
+    const checkNotifications = () => {
+        const today = new Date();
+        const fourDaysFromNow = new Date(today);
+        fourDaysFromNow.setDate(today.getDate() + 4);
+
+        console.log('Today:', today.toISOString().split('T')[0]);
+        console.log('Four days from now:', fourDaysFromNow.toISOString().split('T')[0]);
+
+        const newNotifications = orders.filter(order => {
+            const orderDate = new Date(order.date);
+            console.log('Order date:', orderDate.toISOString().split('T')[0]);
+            return orderDate.toISOString().split('T')[0] === fourDaysFromNow.toISOString().split('T')[0];
+        });
+
+        console.log('Orders to notify:', newNotifications);
+
+        newNotifications.forEach(order => {
+            sendTelegramNotification(order);
+        });
+
+        setNotifications(newNotifications);
+    };
+
+    // Función para enviar notificaciones por Telegram
+    const sendTelegramNotification = async (order) => {
+        const botToken = '7584979783:AAEfvF3Cmf8lHWd25j9M6bo5XXT8ryPPZYA';
+        const chatId = '-439505742';
+        const message = `La orden #${order.order_number} está programada para instalarse en 4 días con plataforma.`;
+
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.ok) {
+                console.log('Mensaje de Telegram enviado:', data);
+            } else {
+                console.error('Error en la respuesta de Telegram:', data);
+            }
+        } catch (error) {
+            console.error('Error enviando mensaje de Telegram:', error);
+        }
+    };
+
+    // Ejecuta fetchOrders y checkNotifications cuando el componente se monta
     useEffect(() => {
         fetchOrders();
     }, []);
+
+    useEffect(() => {
+        checkNotifications();
+    }, [orders]);
 
     return (
         <div style={styles.container}>
@@ -92,6 +151,20 @@ const OrderPage = () => {
                 />
                 <button type="submit" style={styles.button}>Guardar orden</button>
             </form>
+
+            {/* Mostrar notificaciones */}
+            {notifications.length > 0 && (
+                <div style={styles.notificationContainer}>
+                    <h2 style={styles.notificationHeading}>Notificaciones</h2>
+                    <ul style={styles.notificationList}>
+                        {notifications.map((order) => (
+                            <li key={order.id} style={styles.notificationItem}>
+                                La orden #{order.order_number} está programada para instalarse en 4 días.
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             {/* Mostrar órdenes agrupadas por semana */}
             <h2 style={styles.subHeading}>Órdenes por Semana</h2>
@@ -181,5 +254,27 @@ const styles = {
         padding: '8px 0',
         borderBottom: '1px solid #eee',
         fontSize: '1rem',
+    },
+    notificationContainer: {
+        backgroundColor: '#fff',
+        padding: '10px',
+        borderRadius: '6px',
+        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)',
+        marginBottom: '20px',
+    },
+    notificationHeading: {
+        fontSize: '1.5rem',
+        color: '#ff0000',
+        marginBottom: '10px',
+    },
+    notificationList: {
+        listStyleType: 'none',
+        paddingLeft: '0',
+    },
+    notificationItem: {
+        padding: '8px 0',
+        borderBottom: '1px solid #eee',
+        fontSize: '1rem',
+        color: '#ff0000',
     },
 };
