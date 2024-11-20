@@ -1,18 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    i18n: {
-        locales: ['en-US', 'es-ES'],
-        defaultLocale: 'es-ES',
+    // Configuración para App Router con internacionalización
+    experimental: {
+        appDir: true
+    },
+    // Eliminar i18n antiguo y usar middleware para idiomas
+    async redirects() {
+        return [
+            {
+                source: '/',
+                destination: '/es-ES',
+                permanent: true,
+            },
+        ];
     },
     reactStrictMode: true,
-
-    // Configurar compilación
     swcMinify: true,
-
-    // Configurar salida estática si es necesario
     output: 'standalone',
-
-    // Configurar dominio de imágenes si se usan
     images: {
         domains: ['localhost'],
         unoptimized: true
