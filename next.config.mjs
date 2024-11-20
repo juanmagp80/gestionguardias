@@ -1,19 +1,5 @@
-/** @type {import('next').NextConfig} */
+// next.config.js
 const nextConfig = {
-    // Configuración para App Router con internacionalización
-    experimental: {
-        appDir: true
-    },
-    // Eliminar i18n antiguo y usar middleware para idiomas
-    async redirects() {
-        return [
-            {
-                source: '/',
-                destination: '/es-ES',
-                permanent: true,
-            },
-        ];
-    },
     reactStrictMode: true,
     swcMinify: true,
     output: 'standalone',
