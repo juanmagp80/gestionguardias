@@ -1,13 +1,15 @@
 "use client";
+
 import { format } from 'date-fns';
 import { enUS, es } from 'date-fns/locale';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
 import { CSVLink } from "react-csv";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function AsignacionGuardias() {
+    // Estados
     const [locale, setLocale] = useState('es-ES');
     const [provinciaId, setProvinciaId] = useState("");
     const [tecnicosOrden, setTecnicosOrden] = useState([]);
@@ -19,44 +21,77 @@ export default function AsignacionGuardias() {
     const [tecnicoSeleccionadoCambio, setTecnicoSeleccionadoCambio] = useState({});
     const [provinciaSeleccionada, setProvinciaSeleccionada] = useState("");
 
+    // Funciones optimizadas con useCallback
+    const cargarProvincias = useCallback(async () => {
+        const { data } = await supabase.from('provincias').select('*');
+        setProvincias(data || []);
+    }, []);
 
+    const cargarTecnicos = useCallback(async () => {
+        if (!provinciaId) return;
+        const { data } = await supabase
+            .from('tecnicos')
+            .select('*')
+            .eq('provincia_id', provinciaId);
+        setTecnicos(data || []);
+        setTecnicosOrden(new Array(data?.length || 0).fill(null));
+    }, [provinciaId]);
+
+    const cargarGuardias = useCallback(async () => {
+        if (!semanaInicio) return;
+
+        const fechaInicio = new Date(semanaInicio);
+        const fechaFin = new Date(fechaInicio);
+        fechaFin.setDate(fechaInicio.getDate() + 6);
+
+        try {
+            const { data, error } = await supabase
+                .from('guardias')
+                .select(`
+                    id,
+                    fecha_guardia,
+                    tecnico_id,
+                    provincia_id,
+                    pago,
+                    tecnicos (id, nombre),
+                    provincias (id, nombre)
+                `)
+                .gte('fecha_guardia', fechaInicio.toLocaleDateString('sv'))
+                .lte('fecha_guardia', fechaFin.toLocaleDateString('sv'))
+                .order('fecha_guardia', { ascending: true });
+
+            if (error) throw error;
+            setGuardias(data || []);
+        } catch (error) {
+            console.error("Error al cargar guardias:", error);
+            setMensaje("Error al cargar guardias");
+        }
+    }, [semanaInicio]);
+
+    // useEffects optimizados
     useEffect(() => {
-        // Usar el idioma del navegador o defaultear a es-ES
         const browserLocale = navigator.language;
         setLocale(browserLocale.startsWith('es') ? 'es-ES' : 'en-US');
     }, []);
 
     useEffect(() => {
         cargarProvincias();
-    }, []);
+    }, [cargarProvincias]);
 
     useEffect(() => {
         if (provinciaId) {
             cargarTecnicos();
             cargarGuardias();
         }
-    }, [provinciaId]);
+    }, [provinciaId, cargarTecnicos, cargarGuardias]);
 
     useEffect(() => {
         if (semanaInicio) {
             cargarGuardias();
         }
-    }, [semanaInicio]);
+    }, [semanaInicio, cargarGuardias]);
 
-    const cargarProvincias = async () => {
-        const { data } = await supabase.from('provincias').select('*');
-        setProvincias(data || []);
-    };
-
-    const cargarTecnicos = async () => {
-        const { data } = await supabase
-            .from('tecnicos')
-            .select('*')
-            .eq('provincia_id', provinciaId);
-        setTecnicos(data || []);
-        setTecnicosOrden(new Array(data.length).fill(null));
-    };
-
+    // Resto de funciones
     const asignarGuardias = async () => {
         if (!provinciaId || !semanaInicio || tecnicosOrden.length === 0 || tecnicosOrden.includes(null)) {
             setMensaje("Selecciona provincia, semana y orden de técnicos");
@@ -69,16 +104,10 @@ export default function AsignacionGuardias() {
             const fechaFin = new Date(fechaInicio);
             fechaFin.setDate(fechaInicio.getDate() + 6);
 
-            console.log('Fecha inicio para guardias:', fechaInicio);
-            console.log('Fecha fin para guardias:', fechaFin);
-
             for (let i = 0; i < 12; i++) {
                 const fecha = new Date(fechaInicio);
                 fecha.setDate(fecha.getDate() + (i * 7));
-
-                // Formatear fecha en YYYY-MM-DD manteniendo la zona horaria local
                 const fechaGuardia = fecha.toLocaleDateString('sv').split('T')[0];
-                console.log('Guardando guardia para fecha:', fechaGuardia);
 
                 nuevasGuardias.push({
                     fecha_guardia: fechaGuardia,
@@ -87,8 +116,6 @@ export default function AsignacionGuardias() {
                     pago: 100
                 });
             }
-
-            console.log('Guardias a insertar:', nuevasGuardias);
 
             const { error: deleteError } = await supabase
                 .from('guardias')
@@ -99,14 +126,13 @@ export default function AsignacionGuardias() {
 
             if (deleteError) throw deleteError;
 
-            const { data, error: insertError } = await supabase
+            const { error: insertError } = await supabase
                 .from('guardias')
                 .insert(nuevasGuardias)
                 .select();
 
             if (insertError) throw insertError;
 
-            console.log('Guardias insertadas:', data);
             setMensaje("Guardias asignadas correctamente");
             await cargarGuardias();
         } catch (error) {
@@ -131,56 +157,14 @@ export default function AsignacionGuardias() {
                 .delete()
                 .eq('provincia_id', provinciaId);
 
-            if (error) {
-                throw error;
-            }
+            if (error) throw error;
 
             setMensaje("Guardias eliminadas correctamente");
-            setGuardias([]); // Limpiar el estado local
-            await cargarGuardias(); // Recargar las guardias
-
+            setGuardias([]);
+            await cargarGuardias();
         } catch (error) {
             console.error("Error al eliminar guardias:", error);
             setMensaje("Error al eliminar las guardias: " + error.message);
-        }
-    };
-    const cargarGuardias = async () => {
-        if (!semanaInicio) return;
-
-        const fechaInicio = new Date(semanaInicio);
-        const fechaFin = new Date(fechaInicio);
-        fechaFin.setDate(fechaInicio.getDate() + 6);
-
-        console.log('Cargando guardias desde:', fechaInicio.toLocaleDateString('sv'));
-        console.log('Hasta:', fechaFin.toLocaleDateString('sv'));
-
-        try {
-            const { data, error } = await supabase
-                .from('guardias')
-                .select(`
-                id,
-                fecha_guardia,
-                tecnico_id,
-                provincia_id,
-                pago,
-                tecnicos (id, nombre),
-                provincias (id, nombre)
-            `)
-                .gte('fecha_guardia', fechaInicio.toLocaleDateString('sv'))
-                .lte('fecha_guardia', fechaFin.toLocaleDateString('sv'))
-                .order('fecha_guardia', { ascending: true });
-
-            if (error) {
-                console.error("Error al cargar guardias:", error);
-                setMensaje("Error al cargar guardias");
-                return;
-            }
-
-            console.log('Guardias cargadas:', data);
-            setGuardias(data || []);
-        } catch (error) {
-            console.error("Error al cargar guardias:", error);
-            setMensaje("Error al cargar guardias");
         }
     };
 
@@ -191,8 +175,6 @@ export default function AsignacionGuardias() {
         }
 
         try {
-            console.log(`Actualizando guardia con ID: ${guardiaId}, Técnico ID: ${nuevoTecnicoId}`);
-
             const { data: guardiaExistente, error: errorExistente } = await supabase
                 .from('guardias')
                 .select('id')
@@ -203,18 +185,13 @@ export default function AsignacionGuardias() {
                 throw new Error('No se encontró la guardia para actualizar');
             }
 
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('guardias')
                 .update({ tecnico_id: nuevoTecnicoId })
                 .eq('id', guardiaId)
                 .select();
 
-            if (error) {
-                console.error("Error al actualizar la guardia:", error.message);
-                throw error;
-            }
-
-            console.log('Respuesta de la base de datos:', data);
+            if (error) throw error;
 
             setMensaje("Técnico cambiado correctamente");
             await cargarGuardias();
@@ -227,9 +204,7 @@ export default function AsignacionGuardias() {
 
     const handleCalendarClick = (date) => {
         if (date.getDay() === 1) {
-            // Mantener la fecha en la zona horaria local
             const selectedDate = new Date(date);
-            console.log('Fecha original seleccionada:', selectedDate);
             setSemanaInicio(selectedDate);
         } else {
             setMensaje("Por favor, selecciona un lunes");
@@ -253,6 +228,9 @@ export default function AsignacionGuardias() {
         finSemana.setDate(finSemana.getDate() + 6);
         return `${format(inicioSemana, 'MMMM dd, yyyy', { locale: locale === 'es-ES' ? es : enUS })} - ${format(finSemana, 'MMMM dd, yyyy', { locale: locale === 'es-ES' ? es : enUS })}`;
     };
+
+    // El return se mantiene igual que en tu código original...
+    // [Todo el JSX que ya tenías]
 
     // Reemplazar el return con este código actualizado:
     return (

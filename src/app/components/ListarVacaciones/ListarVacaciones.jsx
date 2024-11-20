@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as XLSX from 'xlsx';
 import { supabase } from "../../../../lib/supabaseClient";
 
@@ -11,45 +11,9 @@ export default function ListarVacaciones() {
     const [modalOpen, setModalOpen] = useState(false);
     const [nuevasFechas, setNuevasFechas] = useState({ fecha_inicio: "", fecha_fin: "" });
 
-    useEffect(() => {
-        fetchProvincias();
-    }, []);
+    const fetchVacaciones = useCallback(async () => {
+        if (!tecnicos.length) return;
 
-    useEffect(() => {
-        if (provinciaId) {
-            fetchTecnicos(provinciaId);
-        }
-    }, [provinciaId]);
-
-    useEffect(() => {
-        if (provinciaId) {
-            fetchVacaciones();
-        }
-    }, [provinciaId, tecnicos]);
-
-    const fetchProvincias = async () => {
-        const { data, error } = await supabase.from("provincias").select("*");
-        if (error) {
-            console.error("Error al cargar provincias:", error.message);
-        } else {
-            setProvincias(data);
-        }
-    };
-
-    const fetchTecnicos = async (provinciaId) => {
-        const { data, error } = await supabase
-            .from("tecnicos")
-            .select("*")
-            .eq("provincia_id", provinciaId);
-
-        if (error) {
-            console.error("Error al cargar técnicos:", error.message);
-        } else {
-            setTecnicos(data);
-        }
-    };
-
-    const fetchVacaciones = async () => {
         const { data, error } = await supabase
             .from("vacaciones")
             .select("*, tecnicos(nombre)")
@@ -66,7 +30,45 @@ export default function ListarVacaciones() {
             }));
             setVacaciones(adjustedVacaciones);
         }
-    };
+    }, [tecnicos]);
+
+    const fetchProvincias = useCallback(async () => {
+        const { data, error } = await supabase.from("provincias").select("*");
+        if (error) {
+            console.error("Error al cargar provincias:", error.message);
+        } else {
+            setProvincias(data);
+        }
+    }, []);
+
+    const fetchTecnicos = useCallback(async (provinciaId) => {
+        const { data, error } = await supabase
+            .from("tecnicos")
+            .select("*")
+            .eq("provincia_id", provinciaId);
+
+        if (error) {
+            console.error("Error al cargar técnicos:", error.message);
+        } else {
+            setTecnicos(data);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchProvincias();
+    }, [fetchProvincias]);
+
+    useEffect(() => {
+        if (provinciaId) {
+            fetchTecnicos(provinciaId);
+        }
+    }, [provinciaId, fetchTecnicos]);
+
+    useEffect(() => {
+        if (provinciaId && tecnicos.length > 0) {
+            fetchVacaciones();
+        }
+    }, [provinciaId, tecnicos, fetchVacaciones]);
 
     const exportarExcel = () => {
         const ws = XLSX.utils.json_to_sheet(vacaciones.map(v => ({
@@ -194,7 +196,6 @@ export default function ListarVacaciones() {
                 Exportar a Excel
             </button>
 
-            {/* Modal para editar vacaciones */}
             {modalOpen && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white p-6 rounded-lg shadow-md w-1/3">
