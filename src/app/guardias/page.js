@@ -17,6 +17,8 @@ export default function AsignacionGuardias() {
     const [guardias, setGuardias] = useState([]);
     const [mensaje, setMensaje] = useState("");
     const [tecnicoSeleccionadoCambio, setTecnicoSeleccionadoCambio] = useState({});
+    const [provinciaSeleccionada, setProvinciaSeleccionada] = useState("");
+
 
     useEffect(() => {
         // Usar el idioma del navegador o defaultear a es-ES
@@ -113,7 +115,35 @@ export default function AsignacionGuardias() {
         }
     };
 
+    const eliminarGuardias = async () => {
+        if (!provinciaId) {
+            setMensaje("Selecciona una provincia primero");
+            return;
+        }
 
+        if (!window.confirm('¿Estás seguro de que quieres eliminar todas las guardias de esta provincia?')) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('guardias')
+                .delete()
+                .eq('provincia_id', provinciaId);
+
+            if (error) {
+                throw error;
+            }
+
+            setMensaje("Guardias eliminadas correctamente");
+            setGuardias([]); // Limpiar el estado local
+            await cargarGuardias(); // Recargar las guardias
+
+        } catch (error) {
+            console.error("Error al eliminar guardias:", error);
+            setMensaje("Error al eliminar las guardias: " + error.message);
+        }
+    };
     const cargarGuardias = async () => {
         if (!semanaInicio) return;
 
@@ -237,10 +267,15 @@ export default function AsignacionGuardias() {
                     <div className="group">
                         <select
                             value={provinciaId}
-                            onChange={(e) => setProvinciaId(e.target.value)}
+                            onChange={(e) => {
+                                setProvinciaId(e.target.value);
+                                // Obtener el nombre de la provincia seleccionada
+                                const provincia = provincias.find(p => p.id.toString() === e.target.value);
+                                setProvinciaSeleccionada(provincia ? provincia.nombre : "");
+                            }}
                             className="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg
-                                 transition-all duration-300 focus:ring-2 focus:ring-red-500 
-                                 focus:border-transparent outline-none hover:bg-gray-600"
+         transition-all duration-300 focus:ring-2 focus:ring-red-500 
+         focus:border-transparent outline-none hover:bg-gray-600"
                         >
                             <option value="">Selecciona Provincia</option>
                             {provincias.map(p => (
@@ -289,13 +324,26 @@ export default function AsignacionGuardias() {
                         onClick={asignarGuardias}
                         disabled={!provinciaId || !semanaInicio || !isOrdenCompleto()}
                         className="w-full p-4 bg-gradient-to-r from-red-600 to-red-500 text-white 
-                             rounded-lg font-semibold text-lg transition-all duration-300 
-                             hover:from-red-500 hover:to-red-400 disabled:from-gray-500 
-                             disabled:to-gray-400 disabled:cursor-not-allowed transform 
-                             hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100
-                             shadow-lg hover:shadow-xl"
+         rounded-lg font-semibold text-lg transition-all duration-300 
+         hover:from-red-500 hover:to-red-400 disabled:from-gray-500 
+         disabled:to-gray-400 disabled:cursor-not-allowed transform 
+         hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100
+         shadow-lg hover:shadow-xl mb-4"
                     >
                         Asignar Guardias
+                    </button>
+
+                    <button
+                        onClick={eliminarGuardias}
+                        disabled={!provinciaId}
+                        className="w-full p-4 bg-gradient-to-r from-red-800 to-red-700 text-white 
+         rounded-lg font-semibold text-lg transition-all duration-300 
+         hover:from-red-700 hover:to-red-600 disabled:from-gray-500 
+         disabled:to-gray-400 disabled:cursor-not-allowed transform 
+         hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100
+         shadow-lg hover:shadow-xl"
+                    >
+                        {provinciaSeleccionada ? `Eliminar todas las guardias de ${provinciaSeleccionada}` : 'Eliminar todas las guardias'}
                     </button>
 
                     {/* Mensaje */}
