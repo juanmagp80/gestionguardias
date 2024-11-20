@@ -79,3 +79,36 @@ input:focus {
 .order-item:hover {
     background-color: #4B5563;
 }
+/* Añadir estos estilos en styles.css */
+.dark-calendar {
+    background-color: #1a1a1a !important;
+    color: white !important;
+    border: 1px solid #333 !important;
+}
+
+.dark-calendar .react-calendar__tile {
+    color: white !important;
+    background-color: #1a1a1a !important;
+}
+
+.dark-calendar .react-calendar__tile:enabled:hover,
+.dark-calendar .react-calendar__tile:enabled:focus {
+    background-color: #333 !important;
+}
+
+.dark-calendar .react-calendar__tile--active {
+    background-color: #3182ce !important;
+}
+
+.dark-calendar .react-calendar__navigation button {
+    color: white !important;
+}
+
+.dark-calendar .react-calendar__navigation button:enabled:hover,
+.dark-calendar .react-calendar__navigation button:enabled:focus {
+    background-color: #333 !important;
+}
+
+.dark-calendar .react-calendar__month-view__weekdays {
+    color: white !important;
+}
