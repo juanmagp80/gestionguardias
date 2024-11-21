@@ -20,7 +20,31 @@ export default function AsignacionGuardias() {
     const [mensaje, setMensaje] = useState("");
     const [tecnicoSeleccionadoCambio, setTecnicoSeleccionadoCambio] = useState({});
     const [provinciaSeleccionada, setProvinciaSeleccionada] = useState("");
+    const [semanaActual, setSemanaActual] = useState(null);
 
+    const avanzarSemana = () => {
+        if (semanaActual) {
+            const nuevaSemana = new Date(semanaActual);
+            nuevaSemana.setDate(nuevaSemana.getDate() + 7);
+            setSemanaActual(nuevaSemana);
+        }
+    };
+
+    const retrocederSemana = () => {
+        if (semanaActual) {
+            const nuevaSemana = new Date(semanaActual);
+            nuevaSemana.setDate(nuevaSemana.getDate() - 7);
+            setSemanaActual(nuevaSemana);
+        }
+    };
+
+
+    // Modificar useEffect para inicializar semanaActual cuando se seleccione una fecha en el calendario
+    useEffect(() => {
+        if (semanaInicio) {
+            setSemanaActual(new Date(semanaInicio));
+        }
+    }, [semanaInicio]);
     // Funciones optimizadas con useCallback
     const cargarProvincias = useCallback(async () => {
         const { data } = await supabase.from('provincias').select('*');
@@ -38,11 +62,14 @@ export default function AsignacionGuardias() {
     }, [provinciaId]);
 
     const cargarGuardias = useCallback(async () => {
-        if (!semanaInicio) return;
+        if (!semanaActual) return;
 
-        const fechaInicio = new Date(semanaInicio);
+        const fechaInicio = new Date(semanaActual);
+        fechaInicio.setHours(0, 0, 0, 0);
+
         const fechaFin = new Date(fechaInicio);
         fechaFin.setDate(fechaInicio.getDate() + 6);
+        fechaFin.setHours(23, 59, 59, 999);
 
         try {
             const { data, error } = await supabase
@@ -56,8 +83,8 @@ export default function AsignacionGuardias() {
                     tecnicos (id, nombre),
                     provincias (id, nombre)
                 `)
-                .gte('fecha_guardia', fechaInicio.toLocaleDateString('sv'))
-                .lte('fecha_guardia', fechaFin.toLocaleDateString('sv'))
+                .gte('fecha_guardia', fechaInicio.toISOString())
+                .lte('fecha_guardia', fechaFin.toISOString())
                 .order('fecha_guardia', { ascending: true });
 
             if (error) throw error;
@@ -66,7 +93,7 @@ export default function AsignacionGuardias() {
             console.error("Error al cargar guardias:", error);
             setMensaje("Error al cargar guardias");
         }
-    }, [semanaInicio]);
+    }, [semanaActual]);
 
     // useEffects optimizados
     useEffect(() => {
@@ -90,6 +117,11 @@ export default function AsignacionGuardias() {
             cargarGuardias();
         }
     }, [semanaInicio, cargarGuardias]);
+    useEffect(() => {
+        if (semanaActual) {
+            cargarGuardias();
+        }
+    }, [semanaActual, cargarGuardias]);
 
     // Resto de funciones
     const asignarGuardias = async () => {
@@ -359,6 +391,29 @@ export default function AsignacionGuardias() {
 
                 {/* Tabla de Guardias */}
                 <div className="overflow-hidden rounded-lg shadow-xl bg-gray-700">
+                    <div className="flex justify-between items-center p-4 bg-gray-800">
+                        <button
+                            onClick={retrocederSemana}
+                            disabled={!semanaActual}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 
+                     disabled:bg-gray-700 disabled:cursor-not-allowed"
+                        >
+                            ← Semana anterior
+                        </button>
+
+                        <span className="text-white font-medium">
+                            {semanaActual ? obtenerSemana(semanaActual) : 'Selecciona una semana'}
+                        </span>
+
+                        <button
+                            onClick={avanzarSemana}
+                            disabled={!semanaActual}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 
+                     disabled:bg-gray-700 disabled:cursor-not-allowed"
+                        >
+                            Siguiente semana →
+                        </button>
+                    </div>
                     <table className="w-full">
                         <thead className="bg-gray-800">
                             <tr>
