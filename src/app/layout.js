@@ -11,8 +11,8 @@ const dosis = Dosis({
 });
 
 export const metadata = {
-  title: "Gestión de Guardias",
-  description: "Sistema de gestión de guardias",
+  title: "Gestión Corporate",
+  description: "Sistema de gestión",
 };
 
 export default function RootLayout({ children }) {
