@@ -45,9 +45,18 @@ export default function AsignarVacaciones() {
     const handleRangoSeleccionado = (range) => {
         const [start, end] = range;
         if (start && end) {
+            // Establecer la hora a medianoche y formatear manualmente
+            const formatearFecha = (fecha) => {
+                fecha.setHours(0, 0, 0, 0);
+                const year = fecha.getFullYear();
+                const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                const day = String(fecha.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
             setRangoSeleccionado({
-                fecha_inicio: start.toISOString().split("T")[0],
-                fecha_fin: end.toISOString().split("T")[0]
+                fecha_inicio: formatearFecha(start),
+                fecha_fin: formatearFecha(end)
             });
         } else {
             setRangoSeleccionado(null);
@@ -100,15 +109,15 @@ export default function AsignarVacaciones() {
     };
 
     return (
-        <div className="p-6 bg-white shadow-md rounded-lg">
-            <h2 className="text-2xl font-bold mb-4 text-gray-700">Asignar Vacaciones</h2>
+        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold mb-4 text-gray-200">Asignar Vacaciones</h2>
 
             <div className="mb-4">
-                <label className="block text-gray-600 mb-1">Selecciona una Provincia</label>
+                <label className="block bg-gray-800 text-gray-200 mb-1">Selecciona una Provincia</label>
                 <select
                     value={provinciaId}
                     onChange={(e) => setProvinciaId(e.target.value)}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border bg-gray-800 rounded-md"
                 >
                     <option value="">Selecciona una provincia</option>
                     {provincias.map((provincia) => (
@@ -120,12 +129,12 @@ export default function AsignarVacaciones() {
             </div>
 
             <div className="mb-4">
-                <label className="block text-gray-600 mb-1">Selecciona un Técnico</label>
+                <label className="block bg-gray-800 text-gray-200 mb-1">Selecciona un Técnico</label>
                 <select
                     value={tecnicoId}
                     onChange={(e) => setTecnicoId(e.target.value)}
                     disabled={!provinciaId}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 bg-gray-800 border rounded-md"
                 >
                     <option value="">Selecciona un técnico</option>
                     {tecnicos.map((tecnico) => (
@@ -137,7 +146,7 @@ export default function AsignarVacaciones() {
             </div>
 
             <div className="mb-4">
-                <label className="block text-gray-600 mb-1">Selecciona el Rango de Fechas</label>
+                <label className="block text-gray-200 mb-1">Selecciona el Rango de Fechas</label>
                 <Calendar
                     selectRange={true}
                     onChange={handleRangoSeleccionado}
