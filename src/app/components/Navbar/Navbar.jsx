@@ -1,6 +1,7 @@
 "use client"
 import { Disclosure } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 const navigation = [
     { name: 'Técnicos', href: '/tecnicos', current: false },
@@ -26,10 +27,11 @@ export default function Navbar() {
                         <div className="flex h-16 items-center justify-between">
                             <div className="flex items-center">
                                 <div className="flex-shrink-0">
-                                    <img
-                                        className="h-18 w-32"
-                                        src="/instelca.png" // Reemplaza con la ruta de tu logo
-                                        alt="Your Logo"
+                                    <Image
+                                        src="/instelca.png"
+                                        alt="Logo Instelca"
+                                        width={200} // Ajustar según necesidades
+                                        height={100} // Ajustar según necesidades
                                     />
                                 </div>
                                 <div className="hidden md:block">
