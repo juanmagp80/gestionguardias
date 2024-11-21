@@ -93,45 +93,69 @@ export default function AsignacionGuardias() {
 
     // Resto de funciones
     const asignarGuardias = async () => {
-        if (!provinciaId || !semanaInicio || tecnicosOrden.length === 0 || tecnicosOrden.includes(null)) {
-            setMensaje("Selecciona provincia, semana y orden de técnicos");
+        // Añadir logs para debug
+        console.log("Iniciando asignación de guardias");
+        console.log("ProvinciaId:", provinciaId);
+        console.log("SemanaInicio:", semanaInicio);
+        console.log("TecnicosOrden:", tecnicosOrden);
+
+        if (!provinciaId || !semanaInicio) {
+            setMensaje("Selecciona provincia y semana");
+            return;
+        }
+
+        // Filtrar técnicos seleccionados y validar
+        const tecnicosSeleccionados = tecnicosOrden.filter(t => t !== null);
+        console.log("Técnicos seleccionados:", tecnicosSeleccionados);
+
+        if (tecnicosSeleccionados.length === 0) {
+            setMensaje("Selecciona al menos un técnico");
             return;
         }
 
         try {
             const nuevasGuardias = [];
             const fechaInicio = new Date(semanaInicio);
-            const fechaFin = new Date(fechaInicio);
-            fechaFin.setDate(fechaInicio.getDate() + 6);
+            console.log("Fecha inicio:", fechaInicio);
 
+            // Crear guardias para 12 semanas
             for (let i = 0; i < 12; i++) {
                 const fecha = new Date(fechaInicio);
                 fecha.setDate(fecha.getDate() + (i * 7));
-                const fechaGuardia = fecha.toLocaleDateString('sv').split('T')[0];
+                const fechaGuardia = fecha.toLocaleDateString('sv');
 
                 nuevasGuardias.push({
                     fecha_guardia: fechaGuardia,
-                    tecnico_id: tecnicosOrden[i % tecnicosOrden.length].id,
+                    tecnico_id: tecnicosSeleccionados[i % tecnicosSeleccionados.length].id,
                     provincia_id: provinciaId,
                     pago: 100
                 });
             }
 
+            console.log("Nuevas guardias a insertar:", nuevasGuardias);
+
+            // Eliminar guardias existentes
             const { error: deleteError } = await supabase
                 .from('guardias')
                 .delete()
                 .eq('provincia_id', provinciaId)
                 .gte('fecha_guardia', fechaInicio.toLocaleDateString('sv'))
-                .lte('fecha_guardia', fechaFin.toLocaleDateString('sv'));
+                .lte('fecha_guardia', new Date(fechaInicio.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('sv'));
 
-            if (deleteError) throw deleteError;
+            if (deleteError) {
+                console.error("Error al eliminar guardias:", deleteError);
+                throw deleteError;
+            }
 
+            // Insertar nuevas guardias
             const { error: insertError } = await supabase
                 .from('guardias')
-                .insert(nuevasGuardias)
-                .select();
+                .insert(nuevasGuardias);
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                console.error("Error al insertar guardias:", insertError);
+                throw insertError;
+            }
 
             setMensaje("Guardias asignadas correctamente");
             await cargarGuardias();
@@ -218,9 +242,9 @@ export default function AsignacionGuardias() {
     };
 
     const isOrdenCompleto = () => {
-        return tecnicosOrden.length === tecnicos.length && tecnicosOrden.every(t => t);
+        // Verifica que al menos haya un técnico seleccionado
+        return tecnicosOrden.some(t => t !== null);
     };
-
     const obtenerSemana = (fecha) => {
         const inicioSemana = new Date(fecha);
         inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay() + (inicioSemana.getDay() === 0 ? -6 : 1));
@@ -300,13 +324,13 @@ export default function AsignacionGuardias() {
                     {/* Botón Asignar */}
                     <button
                         onClick={asignarGuardias}
-                        disabled={!provinciaId || !semanaInicio || !isOrdenCompleto()}
+                        disabled={!provinciaId || !semanaInicio}
                         className="w-full p-4 bg-gradient-to-r from-red-600 to-red-500 text-white 
-         rounded-lg font-semibold text-lg transition-all duration-300 
-         hover:from-red-500 hover:to-red-400 disabled:from-gray-500 
-         disabled:to-gray-400 disabled:cursor-not-allowed transform 
-         hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100
-         shadow-lg hover:shadow-xl mb-4"
+    rounded-lg font-semibold text-lg transition-all duration-300 
+    hover:from-red-500 hover:to-red-400 disabled:from-gray-500 
+    disabled:to-gray-400 disabled:cursor-not-allowed transform 
+    hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100
+    shadow-lg hover:shadow-xl mb-4"
                     >
                         Asignar Guardias
                     </button>
