@@ -17,6 +17,8 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { useEffect, useState } from 'react';
+import './styles.css';
+
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -349,7 +351,7 @@ export default function ReplanteoPDFGenerator() {
     return (
         <Container maxWidth="md">
             <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
-                <Typography variant="h5" gutterBottom>
+                <Typography className='font-dosis text-center' variant="h4" gutterBottom>
                     Generador de Informe de Replanteo Vodafone
                 </Typography>
                 <Box component="form" noValidate autoComplete="off">
