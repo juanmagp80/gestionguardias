@@ -169,10 +169,10 @@ export default function ReplanteoPDFGenerator() {
         const logoLeft = await pdfDoc.embedPng(logoLeftBytes);
         const logoRight = await pdfDoc.embedPng(logoRightBytes);
 
-        const logoLeftWidth = logoLeft.width * 0.2;
-        const logoLeftHeight = logoLeft.height * 0.2;
-        const logoRightWidth = logoRight.width * 0.2;
-        const logoRightHeight = logoRight.height * 0.2;
+        const logoLeftWidth = logoLeft.width * 0.8;
+        const logoLeftHeight = logoLeft.height * 0.8;
+        const logoRightWidth = logoRight.width * 0.8;
+        const logoRightHeight = logoRight.height * 0.8;
 
         page.drawImage(logoLeft, {
             x: 50,
