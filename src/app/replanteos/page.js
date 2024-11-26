@@ -31,17 +31,18 @@ export default function ReplanteoPDFGenerator() {
         fecha: '',
         cliente: '',
         direccion: '',
+        provinciaId: '',
         provincia: '',
         personaContacto: '',
         telefonoContacto: '',
+        tecnicoId: '',
         tecnico: '',
         telefonoTecnico: '',
         motivoInstalacion: '',
         materiales: '1',
         plataformaElevadora: false,
         acometidaEspecial: false,
-        tipoAcometida: '',
-        provinciaId: '', // Para el select
+        tipoAcometida: ''
     });
 
     const [provincias, setProvincias] = useState([]);
@@ -83,19 +84,6 @@ export default function ReplanteoPDFGenerator() {
             setTecnicos(data || []);
         }
     };
-    const handleTecnicoChange = (e) => {
-        const tecnicoId = e.target.value;
-        const tecnicoSeleccionado = tecnicosFiltrados.find(t => t.id === tecnicoId);
-
-        if (tecnicoSeleccionado) {
-            setFormData(prev => ({
-                ...prev,
-                tecnicoId: tecnicoId, // Guardamos el ID para el select
-                tecnico: tecnicoSeleccionado.nombre, // Guardamos el nombre para el PDF
-                telefonoTecnico: tecnicoSeleccionado.telefono
-            }));
-        }
-    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -121,7 +109,7 @@ export default function ReplanteoPDFGenerator() {
             setFormData(prev => ({
                 ...prev,
                 provinciaId: provinciaId,
-                provincia: provinciaSeleccionada.nombre, // Guardamos el nombre para el PDF
+                provincia: provinciaSeleccionada.nombre,
                 tecnicoId: '',
                 tecnico: '',
                 telefonoTecnico: ''
@@ -132,6 +120,19 @@ export default function ReplanteoPDFGenerator() {
         }
     };
 
+    const handleTecnicoChange = (e) => {
+        const tecnicoId = e.target.value;
+        const tecnicoSeleccionado = tecnicosFiltrados.find(t => t.id === tecnicoId);
+
+        if (tecnicoSeleccionado) {
+            setFormData(prev => ({
+                ...prev,
+                tecnicoId: tecnicoId,
+                tecnico: tecnicoSeleccionado.nombre,
+                telefonoTecnico: tecnicoSeleccionado.telefono
+            }));
+        }
+    };
 
     const handleFotosChange = (event) => {
         const files = Array.from(event.target.files);
@@ -141,6 +142,26 @@ export default function ReplanteoPDFGenerator() {
         setFotosPreview(previews);
     };
 
+    const splitTextIntoLines = (text, maxWidth, font) => {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = font.widthOfTextAtSize(currentLine + ' ' + word, 10);
+
+            if (width < maxWidth) {
+                currentLine += ' ' + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+        return lines;
+    };
+
     const drawHeader = async (page, width, height, pdfDoc, font, fontBold) => {
         const logoLeftBytes = await fetch('/logoinstelca.png').then(res => res.arrayBuffer());
         const logoRightBytes = await fetch('vodafone.png').then(res => res.arrayBuffer());
@@ -148,10 +169,10 @@ export default function ReplanteoPDFGenerator() {
         const logoLeft = await pdfDoc.embedPng(logoLeftBytes);
         const logoRight = await pdfDoc.embedPng(logoRightBytes);
 
-        const logoLeftWidth = logoLeft.width * 0.8;
-        const logoLeftHeight = logoLeft.height * 0.8;
-        const logoRightWidth = logoRight.width * 0.8;
-        const logoRightHeight = logoRight.height * 0.8;
+        const logoLeftWidth = logoLeft.width * 0.2;
+        const logoLeftHeight = logoLeft.height * 0.2;
+        const logoRightWidth = logoRight.width * 0.2;
+        const logoRightHeight = logoRight.height * 0.2;
 
         page.drawImage(logoLeft, {
             x: 50,
@@ -200,7 +221,6 @@ export default function ReplanteoPDFGenerator() {
 
         await drawHeader(firstPage, width, height, pdfDoc, font, fontBold);
 
-        // Contenido de la página
         let yPos = height - 130;
 
         const drawSection = (title, y) => {
@@ -226,7 +246,7 @@ export default function ReplanteoPDFGenerator() {
 
         yPos -= 20;
         drawField('CODIGO VDF', formData.codigo, 50, yPos);
-        drawField('RESPONSABLE VDF: ', `${formData.responsableVdf} (${formData.telefonoResponsable})`, 300, yPos);
+        drawField('RESPONSABLE VDF (indicar tfno.)', `${formData.responsableVdf} (${formData.telefonoResponsable})`, 300, yPos);
 
         yPos -= 20;
         drawField('FECHA', formData.fecha, 50, yPos);
@@ -248,28 +268,31 @@ export default function ReplanteoPDFGenerator() {
 
         yPos -= 20;
         drawField('NOMBRE Y CORE DEL TECNICO', formData.tecnico, 50, yPos);
-
-        yPos -= 15; // Reducimos el espacio para el teléfono
+        yPos -= 15;
         drawField('TFNO', formData.telefonoTecnico, 50, yPos);
+
         // Sección 3
         yPos -= 40;
         drawSection('3. MOTIVO Y BREVE DESCRIPCIÓN DE LA INSTALACIÓN A REALIZAR', yPos);
 
         yPos -= 20;
-        firstPage.drawText(formData.motivoInstalacion, {
-            x: 50,
-            y: yPos,
-            size: 10,
-            font,
-            maxWidth: width - 100,
+        const lines = splitTextIntoLines(formData.motivoInstalacion, width - 100, font);
+        lines.forEach((line, index) => {
+            firstPage.drawText(line, {
+                x: 50,
+                y: yPos - (index * 15),
+                size: 10,
+                font,
+            });
         });
 
+        yPos -= (lines.length * 15 + 20);
+
         // Sección 4
-        yPos -= 40;
         drawSection('4. MATERIALES A SUMINISTRAR', yPos);
 
         yPos -= 20;
-        drawField('1/2 técnicos', formData.materiales, 50, yPos);
+        drawField('1/2/3 técnicos', formData.materiales, 50, yPos);
 
         if (formData.plataformaElevadora) {
             yPos -= 20;
@@ -278,10 +301,9 @@ export default function ReplanteoPDFGenerator() {
 
         if (formData.acometidaEspecial) {
             yPos -= 20;
-            drawField('Acometida: ', formData.tipoAcometida, 50, yPos);
+            drawField('Acometida Especial', formData.tipoAcometida, 50, yPos);
         }
 
-        // Páginas de fotos
         if (fotos.length > 0) {
             for (const foto of fotos) {
                 const photoPage = pdfDoc.addPage([595.28, 841.89]);
@@ -322,8 +344,6 @@ export default function ReplanteoPDFGenerator() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
-    // Guardar PDF
-
 
 
     return (
