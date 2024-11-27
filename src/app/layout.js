@@ -1,5 +1,4 @@
-// src/app/layout.js
-import { Dosis } from 'next/font/google'; // Cambiar la importación
+import { Dosis } from 'next/font/google';
 import Navbar from "./components/Navbar/Navbar";
 import "./globals.css";
 
@@ -21,7 +20,6 @@ export default function RootLayout({ children }) {
       <body className={`bg-custom min-h-screen font-dosis ${dosis.className}`}>
         <Navbar />
         <main>{children}</main>
-
       </body>
     </html>
   );

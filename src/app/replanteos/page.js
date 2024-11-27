@@ -17,8 +17,6 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { useEffect, useState } from 'react';
-import './styles.css';
-
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -248,7 +246,7 @@ export default function ReplanteoPDFGenerator() {
 
         yPos -= 20;
         drawField('CODIGO VDF', formData.codigo, 50, yPos);
-        drawField('RESPONSABLE VDF (indicar tfno.)', `${formData.responsableVdf} (${formData.telefonoResponsable})`, 300, yPos);
+        drawField('RESPONSABLE VDF: ', `${formData.responsableVdf} (${formData.telefonoResponsable})`, 300, yPos);
 
         yPos -= 20;
         drawField('FECHA', formData.fecha, 50, yPos);
@@ -294,7 +292,7 @@ export default function ReplanteoPDFGenerator() {
         drawSection('4. MATERIALES A SUMINISTRAR', yPos);
 
         yPos -= 20;
-        drawField('1/2/3 técnicos', formData.materiales, 50, yPos);
+        drawField('1/2 técnicos', formData.materiales, 50, yPos);
 
         if (formData.plataformaElevadora) {
             yPos -= 20;

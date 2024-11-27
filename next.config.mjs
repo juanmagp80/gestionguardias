@@ -1,5 +1,3 @@
-// next.config.mjs
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
@@ -11,7 +9,7 @@ const nextConfig = {
         formats: ['image/webp'],
     },
     webpack: (config) => {
-        return config
+        return config;
     },
     swcMinify: true,
     compress: true,
@@ -36,9 +34,9 @@ const nextConfig = {
                     }
                 ],
             },
-        ]
+        ];
     }
-}
+    // Eliminar completamente la configuración i18n si no la necesitas
+};
 
-// Cambiar module.exports por export default
-export default nextConfig
+export default nextConfig;
