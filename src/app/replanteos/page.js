@@ -17,6 +17,17 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { useEffect, useState } from 'react';
+import { createGlobalStyle } from 'styled-components';
+
+const GlobalStyle = createGlobalStyle`
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #333 inset !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+`;
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -143,22 +154,27 @@ export default function ReplanteoPDFGenerator() {
     };
 
     const splitTextIntoLines = (text, maxWidth, font) => {
-        const words = text.split(' ');
+        const paragraphs = text.split('\n');
         const lines = [];
-        let currentLine = words[0];
 
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const width = font.widthOfTextAtSize(currentLine + ' ' + word, 10);
+        paragraphs.forEach(paragraph => {
+            const words = paragraph.split(' ');
+            let currentLine = words[0];
 
-            if (width < maxWidth) {
-                currentLine += ' ' + word;
-            } else {
-                lines.push(currentLine);
-                currentLine = word;
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = font.widthOfTextAtSize(currentLine + ' ' + word, 10);
+
+                if (width < maxWidth) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
             }
-        }
-        lines.push(currentLine);
+            lines.push(currentLine);
+        });
+
         return lines;
     };
 
@@ -345,282 +361,359 @@ export default function ReplanteoPDFGenerator() {
         URL.revokeObjectURL(url);
     };
 
+<<<<<<< HEAD
+=======
+    const textFieldStyle = {
+        '& .MuiOutlinedInput-root': {
+            '& fieldset': {
+                borderColor: '#555',
+            },
+            '&:hover fieldset': {
+                borderColor: '#E60000',
+            },
+            '&.Mui-focused fieldset': {
+                borderColor: '#E60000',
+            },
+            backgroundColor: '#333', // Color de fondo para todos los campos
+        },
+        '& label.Mui-focused': {
+            color: '#E60000',
+        },
+        '& .MuiInputLabel-root': {
+            color: '#aaa',
+            marginBottom: '-8px', // Ajuste para subir los títulos
+        },
+        '& .MuiInputBase-input': {
+            color: '#fff',
+        },
+        borderRadius: 1,
+        marginBottom: 2
+    };
 
+>>>>>>> cdec45e386be5f358ee8fd84dc2934d5edadc27c
     return (
-        <Container maxWidth="md">
-            <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
-                <Typography className='font-dosis text-center' variant="h4" gutterBottom>
-                    Generador de Informe de Replanteo Vodafone
-                </Typography>
-                <Box component="form" noValidate autoComplete="off">
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Código VDF"
-                                name="codigo"
-                                value={formData.codigo}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Fecha"
-                                name="fecha"
-                                type="date"
-                                value={formData.fecha}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
+        <>
+            <GlobalStyle />
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Responsable VDF"
-                                name="responsableVdf"
-                                value={formData.responsableVdf}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Teléfono Responsable"
-                                name="telefonoResponsable"
-                                value={formData.telefonoResponsable}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                                type="tel"
-                            />
-                        </Grid>
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 4,
+                        borderRadius: 2,
+                        background: 'linear-gradient(to right bottom, #2c2c2c, #1c1c1c)',
+                        boxShadow: '0 3px 10px rgb(0 0 0 / 0.5)'
+                    }}
+                >
+                    <Typography
+                        className='font-dosis'
+                        variant="h4"
+                        gutterBottom
+                        sx={{
+                            textAlign: 'center',
+                            color: '#dccfcf',
+                            mb: 6,
+                            fontWeight: 600
+                        }}
+                    >
+                        Generador de Informe de Replanteo Vodafone
+                    </Typography>
 
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Cliente"
-                                name="cliente"
-                                value={formData.cliente}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Dirección"
-                                name="direccion"
-                                value={formData.direccion}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth variant="outlined" margin="normal">
-                                <InputLabel>Provincia</InputLabel>
-                                <Select
-                                    name="provincia"
-                                    value={formData.provinciaId || ''} // Usamos provinciaId para el select
-                                    onChange={handleProvinciaChange}
-                                    label="Provincia"
-                                >
-                                    {provincias.map((provincia) => (
-                                        <MenuItem key={provincia.id} value={provincia.id}>
-                                            {provincia.nombre}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Persona de Contacto"
-                                name="personaContacto"
-                                value={formData.personaContacto}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Teléfono Contacto"
-                                name="telefonoContacto"
-                                value={formData.telefonoContacto}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                                type="tel"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth variant="outlined" margin="normal">
-                                <InputLabel>Técnico</InputLabel>
-                                <Select
-                                    name="tecnico"
-                                    value={formData.tecnicoId || ''} // Usamos tecnicoId para el select
-                                    onChange={handleTecnicoChange}
-                                    label="Técnico"
-                                    disabled={!formData.provincia}
-                                >
-                                    {tecnicosFiltrados.map((tecnico) => (
-                                        <MenuItem key={tecnico.id} value={tecnico.id}>
-                                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                <Typography>{tecnico.nombre}</Typography>
-                                                <Typography variant="caption" color="textSecondary">
-                                                    {tecnico.telefono}
-                                                </Typography>
-                                            </Box>
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Teléfono Técnico"
-                                name="telefonoTecnico"
-                                value={formData.telefonoTecnico}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                                type="tel"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <FormControl fullWidth variant="outlined" margin="normal">
-                                <InputLabel>Número de Técnicos</InputLabel>
-                                <Select
-                                    name="materiales"
-                                    value={formData.materiales}
+                    <Box component="form" noValidate sx={{ mt: 2 }}>
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Código VDF"
+                                    name="codigo"
+                                    value={formData.codigo}
                                     onChange={handleInputChange}
-                                    label="Número de Técnicos"
-                                >
+                                    required
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#dccfcf' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Fecha"
+                                    name="fecha"
+                                    type="date"
+                                    value={formData.fecha}
+                                    onChange={handleInputChange}
+                                    InputLabelProps={{ shrink: true, style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                    required
+                                    sx={textFieldStyle}
+                                />
+                            </Grid>
 
-                                    <MenuItem value="1">1 Técnico</MenuItem>
-                                    <MenuItem value="2">2 Técnicos</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={formData.plataformaElevadora}
-                                        onChange={handleCheckChange}
-                                        name="plataformaElevadora"
-                                    />
-                                }
-                                label="Plataforma Elevadora"
-                            />
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Responsable VDF"
+                                    name="responsableVdf"
+                                    value={formData.responsableVdf}
+                                    onChange={handleInputChange}
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Teléfono Responsable"
+                                    name="telefonoResponsable"
+                                    value={formData.telefonoResponsable}
+                                    onChange={handleInputChange}
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
 
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={formData.acometidaEspecial}
-                                        onChange={handleCheckChange}
-                                        name="acometidaEspecial"
-                                    />
-                                }
-                                label="Acometida Especial"
-                            />
-                        </Grid>
-
-                        {formData.acometidaEspecial && (
                             <Grid item xs={12}>
                                 <TextField
                                     fullWidth
-                                    label="Tipo de Acometida"
-                                    name="tipoAcometida"
-                                    value={formData.tipoAcometida}
+                                    label="Cliente"
+                                    name="cliente"
+                                    value={formData.cliente}
                                     onChange={handleInputChange}
-                                    variant="outlined"
-                                    margin="normal"
+                                    required
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
                                 />
                             </Grid>
-                        )}
-
-
-
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Motivo y Descripción de Instalación"
-                                name="motivoInstalacion"
-                                value={formData.motivoInstalacion}
-                                onChange={handleInputChange}
-                                variant="outlined"
-                                margin="normal"
-                                multiline
-                                rows={4}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Button
-                                variant="contained"
-                                component="label"
-                                fullWidth
-                                sx={{ mb: 2 }}
-                            >
-                                Subir Fotos
-                                <input
-                                    type="file"
-                                    hidden
-                                    multiple
-                                    accept="image/*"
-                                    onChange={handleFotosChange}
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Dirección"
+                                    name="direccion"
+                                    value={formData.direccion}
+                                    onChange={handleInputChange}
+                                    required
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
                                 />
-                            </Button>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth sx={textFieldStyle}>
+                                    <InputLabel sx={{ color: '#aaa' }}>Provincia</InputLabel>
+                                    <Select
+                                        name="provincia"
+                                        value={formData.provinciaId || ''}
+                                        onChange={handleProvinciaChange}
+                                        label="Provincia"
+                                        required
+                                        sx={{ color: '#fff' }}
+                                    >
+                                        {provincias.map((provincia) => (
+                                            <MenuItem key={provincia.id} value={provincia.id}>
+                                                {provincia.nombre}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
 
-                            {/* Previsualización de fotos */}
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-                                {fotosPreview.map((preview, index) => (
-                                    <Box
-                                        key={index}
-                                        component="img"
-                                        src={preview}
-                                        sx={{
-                                            width: 100,
-                                            height: 100,
-                                            objectFit: 'cover',
-                                            borderRadius: 1
-                                        }}
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Persona de Contacto"
+                                    name="personaContacto"
+                                    value={formData.personaContacto}
+                                    onChange={handleInputChange}
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Teléfono de Contacto"
+                                    name="telefonoContacto"
+                                    value={formData.telefonoContacto}
+                                    onChange={handleInputChange}
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth sx={textFieldStyle}>
+                                    <InputLabel sx={{ color: '#aaa' }}>Técnico</InputLabel>
+                                    <Select
+                                        name="tecnico"
+                                        value={formData.tecnicoId || ''}
+                                        onChange={handleTecnicoChange}
+                                        label="Técnico"
+                                        disabled={!formData.provincia}
+                                        sx={{ color: '#fff' }}
+                                    >
+                                        {tecnicosFiltrados.map((tecnico) => (
+                                            <MenuItem key={tecnico.id} value={tecnico.id}>
+                                                {tecnico.nombre}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Teléfono Técnico"
+                                    name="telefonoTecnico"
+                                    value={formData.telefonoTecnico}
+                                    onChange={handleInputChange}
+                                    disabled
+                                    sx={{
+                                        ...textFieldStyle,
+                                        '& .MuiInputBase-input.Mui-disabled': {
+                                            color: '#ff0000', // Color deseado para el texto
+                                            WebkitTextFillColor: '#faf3f3', // Necesario para Safari
+                                        }
+                                    }}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <FormControl fullWidth sx={textFieldStyle}>
+                                    <InputLabel sx={{ color: '#aaa' }}>Número de Técnicos</InputLabel>
+                                    <Select
+                                        name="materiales"
+                                        value={formData.materiales}
+                                        onChange={handleInputChange}
+                                        label="Número de Técnicos"
+                                        sx={{ color: '#fff' }}
+                                    >
+                                        <MenuItem value="1">1 Técnico</MenuItem>
+                                        <MenuItem value="2">2 Técnicos</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={formData.plataformaElevadora}
+                                            onChange={handleCheckChange}
+                                            name="plataformaElevadora"
+                                            sx={{ color: '#fff' }}
+                                        />
+                                    }
+                                    label="Plataforma Elevadora"
+                                    sx={{ color: '#fff' }}
+                                />
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={formData.acometidaEspecial}
+                                            onChange={handleCheckChange}
+                                            name="acometidaEspecial"
+                                            sx={{ color: '#fff' }}
+                                        />
+                                    }
+                                    label="Acometida Especial"
+                                    sx={{ color: '#fff' }}
+                                />
+                            </Grid>
+                            {formData.acometidaEspecial && (
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        label="Tipo de Acometida"
+                                        name="tipoAcometida"
+                                        value={formData.tipoAcometida}
+                                        onChange={handleInputChange}
+                                        sx={textFieldStyle}
+                                        InputLabelProps={{ style: { color: '#aaa' } }}
+                                        InputProps={{ style: { color: '#fff' } }}
                                     />
-                                ))}
-                            </Box>
-                        </Grid>
+                                </Grid>
+                            )}
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Motivo y Descripción de Instalación"
+                                    name="motivoInstalacion"
+                                    value={formData.motivoInstalacion}
+                                    onChange={handleInputChange}
+                                    multiline
+                                    rows={4}
+                                    sx={textFieldStyle}
+                                    InputLabelProps={{ style: { color: '#aaa' } }}
+                                    InputProps={{ style: { color: '#fff' } }}
+                                />
+                            </Grid>
 
-                        <Grid item xs={12}>
-                            <Button
-                                fullWidth
-                                variant="contained"
-                                color="primary"
-                                onClick={generatePDF}
-                            >
-                                Generar Informe PDF
-                            </Button>
+                            <Grid item xs={12}>
+                                <Button
+                                    variant="contained"
+                                    component="label"
+                                    fullWidth
+                                    sx={{
+                                        py: 2,
+                                        backgroundColor: '#E60000',
+                                        '&:hover': {
+                                            backgroundColor: '#CC0000',
+                                        }
+                                    }}
+                                >
+                                    Subir Fotos
+                                    <input
+                                        type="file"
+                                        hidden
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handleFotosChange}
+                                    />
+                                </Button>
+
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+                                    {fotosPreview.map((preview, index) => (
+                                        <Box
+                                            key={index}
+                                            component="img"
+                                            src={preview}
+                                            sx={{
+                                                width: 100,
+                                                height: 100,
+                                                objectFit: 'cover',
+                                                borderRadius: 1,
+                                                border: '2px solid #E60000'
+                                            }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    onClick={generatePDF}
+                                    sx={{
+                                        mt: 4,
+                                        py: 2,
+                                        backgroundColor: '#E60000',
+                                        '&:hover': {
+                                            backgroundColor: '#CC0000',
+                                        }
+                                    }}
+                                >
+                                    Generar Informe PDF
+                                </Button>
+                            </Grid>
                         </Grid>
-                    </Grid>
-                </Box>
-            </Paper>
-        </Container>
+                    </Box>
+                </Paper>
+            </Container>
+        </>
     );
 }
