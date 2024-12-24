@@ -143,22 +143,27 @@ export default function ReplanteoPDFGenerator() {
     };
 
     const splitTextIntoLines = (text, maxWidth, font) => {
-        const words = text.split(' ');
+        const paragraphs = text.split('\n');
         const lines = [];
-        let currentLine = words[0];
 
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const width = font.widthOfTextAtSize(currentLine + ' ' + word, 10);
+        paragraphs.forEach(paragraph => {
+            const words = paragraph.split(' ');
+            let currentLine = words[0];
 
-            if (width < maxWidth) {
-                currentLine += ' ' + word;
-            } else {
-                lines.push(currentLine);
-                currentLine = word;
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = font.widthOfTextAtSize(currentLine + ' ' + word, 10);
+
+                if (width < maxWidth) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
             }
-        }
-        lines.push(currentLine);
+            lines.push(currentLine);
+        });
+
         return lines;
     };
 
@@ -344,7 +349,6 @@ export default function ReplanteoPDFGenerator() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
-
 
     return (
         <Container maxWidth="md">
